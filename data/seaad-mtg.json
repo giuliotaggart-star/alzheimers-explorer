@@ -1,0 +1,1838 @@
+{
+  "meta": {
+    "PLACEHOLDER": true,
+    "placeholderWarning": "EVERY NUMBER AND EVERY PIECE OF TEXT IN THIS FILE IS FAKE. It exists only so the page can be built before the real analysis is run. Do not present any of it as a finding. Do not replace PLACEHOLDER text with invented biology.",
+    "dataset": "SEA-AD Whole Taxonomy \u2014 MTG (placeholder values)",
+    "region": "middle temporal gyrus",
+    "regionPlain": "a part of the brain behind the temple, involved in memory and language",
+    "source": "Allen Institute for Brain Science, SEA-AD",
+    "citation": "Gabitto et al. (2024) Nature Neuroscience",
+    "citationUrl": "",
+    "licence": "Allen Institute Terms of Use \u2014 non-commercial",
+    "licenceUrl": "https://alleninstitute.org/terms-of-use/",
+    "cellsTotal": 1378211,
+    "donors": {
+      "normal": 42,
+      "dementia": 42
+    },
+    "method": "Donor-level pseudobulk; per-donor means compared between groups with Welch's t-test",
+    "methodPlain": "We averaged each person's cells first, then compared people with and without dementia.",
+    "generated": "2026-11-11",
+    "note": "Percentages do not sum to 100 because rarer cell types are not shown.",
+    "caveats": [
+      "This measures RNA, not protein. A gene being switched on does not prove it is doing something.",
+      "These are brains studied after death. They show one moment, not the change over time."
+    ],
+    "pValueNote": "Very small p-values are stored in scientific notation. Display them as 'less than 0.001' rather than printing the raw number to a student."
+  },
+  "measure": {
+    "id": "abundance",
+    "label": "How common this cell type is",
+    "unit": "% of all cells",
+    "plainQuestion": "Out of every 100 cells, how many are this type?",
+    "higherMeans": "more of these cells"
+  },
+  "cellTypes": [
+    {
+      "id": "excitatory-neurons",
+      "label": "Excitatory neurons",
+      "shortRole": "The brain's main signalling cells",
+      "role": "They carry signals forward through the brain. Most of the thinking cells in this region are this type.",
+      "values": {
+        "normal": {
+          "mean": 32.32,
+          "sd": 2.84,
+          "n": 42,
+          "donorValues": [
+            35.09,
+            33.49,
+            26.18,
+            34.77,
+            34.67,
+            33.68,
+            31.57,
+            32.71,
+            30.24,
+            32.62,
+            34.08,
+            39.2,
+            35.55,
+            31.38,
+            31.87,
+            28.52,
+            29.44,
+            30.3,
+            29.35,
+            34.59,
+            28.9,
+            36.15,
+            35.66,
+            32.34,
+            35.22,
+            27.54,
+            33.66,
+            33.89,
+            34.28,
+            32.39,
+            28.32,
+            30.42,
+            35.41,
+            35.27,
+            28.09,
+            33.24,
+            32.34,
+            28.68,
+            32.44,
+            33.75,
+            28.54,
+            31.5
+          ]
+        },
+        "dementia": {
+          "mean": 27.23,
+          "sd": 3.72,
+          "n": 42,
+          "donorValues": [
+            27.57,
+            27.48,
+            28.54,
+            27.32,
+            31.36,
+            32.62,
+            36.07,
+            24.15,
+            21.1,
+            31.37,
+            31.65,
+            21.88,
+            27.22,
+            23.08,
+            27.63,
+            32.2,
+            24.47,
+            25.16,
+            31.27,
+            31.45,
+            28.75,
+            25.23,
+            32.0,
+            25.93,
+            21.77,
+            23.99,
+            21.62,
+            30.47,
+            24.5,
+            25.64,
+            23.98,
+            27.82,
+            24.44,
+            27.27,
+            22.41,
+            27.56,
+            26.77,
+            28.73,
+            27.32,
+            29.46,
+            33.15,
+            21.48
+          ]
+        }
+      },
+      "effect": {
+        "difference": -5.08,
+        "direction": "down",
+        "cohensD": -1.54,
+        "pAdjusted": 1e-16,
+        "plainSize": "large"
+      },
+      "genesChanged": 164,
+      "interpretation": [
+        {
+          "id": "i1",
+          "text": "PLACEHOLDER chunk 1 for Excitatory neurons \u2014 Giulio writes this. Do not invent replacement text."
+        },
+        {
+          "id": "i2",
+          "text": "PLACEHOLDER chunk 2 for Excitatory neurons \u2014 Giulio writes this. Do not invent replacement text."
+        },
+        {
+          "id": "i3",
+          "text": "PLACEHOLDER chunk 3 for Excitatory neurons \u2014 Giulio writes this. Do not invent replacement text."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": "PLACEHOLDER question 1 about Excitatory neurons, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i1"
+        },
+        {
+          "id": "q2",
+          "prompt": "PLACEHOLDER question 2 about Excitatory neurons, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i2"
+        },
+        {
+          "id": "q3",
+          "prompt": "PLACEHOLDER question 3 about Excitatory neurons, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i3"
+        }
+      ],
+      "topGenes": [
+        {
+          "symbol": "RBFOX3",
+          "name": "RNA binding fox-1 homolog 3",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 1.16,
+              "sd": 0.32
+            },
+            "dementia": {
+              "mean": 2.18,
+              "sd": 0.65
+            }
+          },
+          "log2FC": 0.91,
+          "pAdjusted": 0.000651,
+          "direction": "up",
+          "alsoExpressedIn": [
+            {
+              "cellType": "astrocytes",
+              "mean": 0.8
+            },
+            {
+              "cellType": "microglia",
+              "mean": 0.35
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.19
+            },
+            {
+              "cellType": "opcs",
+              "mean": 0.36
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        },
+        {
+          "symbol": "MAPT",
+          "name": "Microtubule associated protein tau",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 1.17,
+              "sd": 0.33
+            },
+            "dementia": {
+              "mean": 0.69,
+              "sd": 0.21
+            }
+          },
+          "log2FC": -0.76,
+          "pAdjusted": 0.00187,
+          "direction": "down",
+          "alsoExpressedIn": [
+            {
+              "cellType": "astrocytes",
+              "mean": 0.71
+            },
+            {
+              "cellType": "microglia",
+              "mean": 0.77
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.4
+            },
+            {
+              "cellType": "opcs",
+              "mean": 0.25
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        },
+        {
+          "symbol": "SNAP25",
+          "name": "Synaptosome associated protein 25",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 1.3,
+              "sd": 0.36
+            },
+            "dementia": {
+              "mean": 2.43,
+              "sd": 0.73
+            }
+          },
+          "log2FC": 0.9,
+          "pAdjusted": 0.00619,
+          "direction": "up",
+          "alsoExpressedIn": [
+            {
+              "cellType": "astrocytes",
+              "mean": 0.22
+            },
+            {
+              "cellType": "microglia",
+              "mean": 0.41
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.12
+            },
+            {
+              "cellType": "opcs",
+              "mean": 0.28
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        }
+      ],
+      "storyRole": "changed"
+    },
+    {
+      "id": "astrocytes",
+      "label": "Astrocytes",
+      "shortRole": "The support cells",
+      "role": "They feed neurons, tidy up chemical signals and help control blood flow in the brain.",
+      "values": {
+        "normal": {
+          "mean": 11.43,
+          "sd": 1.73,
+          "n": 42,
+          "donorValues": [
+            14.86,
+            13.66,
+            10.88,
+            13.38,
+            12.01,
+            13.46,
+            8.23,
+            12.49,
+            11.95,
+            11.83,
+            9.74,
+            9.07,
+            12.22,
+            10.59,
+            11.96,
+            13.59,
+            10.35,
+            11.64,
+            12.05,
+            11.2,
+            9.27,
+            14.85,
+            8.76,
+            9.63,
+            14.66,
+            10.81,
+            10.57,
+            7.73,
+            10.41,
+            9.95,
+            11.91,
+            13.0,
+            13.01,
+            11.84,
+            11.85,
+            10.23,
+            11.53,
+            10.59,
+            11.6,
+            9.12,
+            11.99,
+            11.47
+          ]
+        },
+        "dementia": {
+          "mean": 14.25,
+          "sd": 1.92,
+          "n": 42,
+          "donorValues": [
+            17.47,
+            15.39,
+            15.7,
+            13.44,
+            16.38,
+            13.83,
+            16.28,
+            13.41,
+            10.54,
+            13.56,
+            13.87,
+            16.7,
+            11.91,
+            15.43,
+            12.27,
+            14.35,
+            16.18,
+            12.78,
+            12.04,
+            13.56,
+            8.18,
+            14.22,
+            14.39,
+            12.5,
+            15.11,
+            14.05,
+            13.44,
+            12.27,
+            14.78,
+            15.34,
+            15.78,
+            15.14,
+            14.95,
+            11.09,
+            17.05,
+            14.23,
+            14.96,
+            13.33,
+            17.97,
+            15.22,
+            14.73,
+            14.55
+          ]
+        }
+      },
+      "effect": {
+        "difference": 2.82,
+        "direction": "up",
+        "cohensD": 1.55,
+        "pAdjusted": 1e-16,
+        "plainSize": "large"
+      },
+      "genesChanged": 361,
+      "interpretation": [
+        {
+          "id": "i1",
+          "text": "PLACEHOLDER chunk 1 for Astrocytes \u2014 Giulio writes this. Do not invent replacement text."
+        },
+        {
+          "id": "i2",
+          "text": "PLACEHOLDER chunk 2 for Astrocytes \u2014 Giulio writes this. Do not invent replacement text."
+        },
+        {
+          "id": "i3",
+          "text": "PLACEHOLDER chunk 3 for Astrocytes \u2014 Giulio writes this. Do not invent replacement text."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": "PLACEHOLDER question 1 about Astrocytes, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i1"
+        },
+        {
+          "id": "q2",
+          "prompt": "PLACEHOLDER question 2 about Astrocytes, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i2"
+        },
+        {
+          "id": "q3",
+          "prompt": "PLACEHOLDER question 3 about Astrocytes, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i3"
+        }
+      ],
+      "topGenes": [
+        {
+          "symbol": "GFAP",
+          "name": "Glial fibrillary acidic protein",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 1.13,
+              "sd": 0.32
+            },
+            "dementia": {
+              "mean": 2.35,
+              "sd": 0.7
+            }
+          },
+          "log2FC": 1.06,
+          "pAdjusted": 0.00651,
+          "direction": "up",
+          "alsoExpressedIn": [
+            {
+              "cellType": "excitatory-neurons",
+              "mean": 0.85
+            },
+            {
+              "cellType": "microglia",
+              "mean": 0.57
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.09
+            },
+            {
+              "cellType": "opcs",
+              "mean": 0.23
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        },
+        {
+          "symbol": "APOE",
+          "name": "Apolipoprotein E",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 1.04,
+              "sd": 0.29
+            },
+            "dementia": {
+              "mean": 0.49,
+              "sd": 0.15
+            }
+          },
+          "log2FC": -1.09,
+          "pAdjusted": 0.00396,
+          "direction": "down",
+          "alsoExpressedIn": [
+            {
+              "cellType": "excitatory-neurons",
+              "mean": 0.82
+            },
+            {
+              "cellType": "microglia",
+              "mean": 0.06
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.16
+            },
+            {
+              "cellType": "opcs",
+              "mean": 0.27
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        },
+        {
+          "symbol": "AQP4",
+          "name": "Aquaporin 4",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 1.29,
+              "sd": 0.36
+            },
+            "dementia": {
+              "mean": 2.56,
+              "sd": 0.77
+            }
+          },
+          "log2FC": 0.99,
+          "pAdjusted": 0.0063,
+          "direction": "up",
+          "alsoExpressedIn": [
+            {
+              "cellType": "excitatory-neurons",
+              "mean": 0.18
+            },
+            {
+              "cellType": "microglia",
+              "mean": 0.61
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.76
+            },
+            {
+              "cellType": "opcs",
+              "mean": 0.2
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        }
+      ],
+      "storyRole": "changed"
+    },
+    {
+      "id": "microglia",
+      "label": "Microglia",
+      "shortRole": "The brain's immune cells",
+      "role": "They patrol the brain, clear away damage and dead cells, and react when something is wrong.",
+      "values": {
+        "normal": {
+          "mean": 4.79,
+          "sd": 1.57,
+          "n": 42,
+          "donorValues": [
+            4.22,
+            3.83,
+            5.41,
+            5.78,
+            0.84,
+            4.1,
+            4.94,
+            3.61,
+            7.54,
+            2.97,
+            6.78,
+            4.69,
+            8.49,
+            4.73,
+            4.13,
+            3.11,
+            4.66,
+            3.29,
+            4.48,
+            4.68,
+            5.44,
+            5.35,
+            2.31,
+            7.03,
+            4.23,
+            1.93,
+            6.83,
+            6.23,
+            5.97,
+            5.39,
+            5.82,
+            4.37,
+            5.62,
+            3.8,
+            4.86,
+            7.2,
+            6.28,
+            2.79,
+            5.07,
+            5.28,
+            3.14,
+            4.17
+          ]
+        },
+        "dementia": {
+          "mean": 7.56,
+          "sd": 1.88,
+          "n": 42,
+          "donorValues": [
+            7.48,
+            8.83,
+            7.74,
+            8.74,
+            8.16,
+            11.28,
+            9.34,
+            7.76,
+            6.64,
+            5.68,
+            3.47,
+            8.2,
+            3.74,
+            9.71,
+            10.36,
+            7.37,
+            4.97,
+            5.68,
+            9.28,
+            5.44,
+            9.85,
+            7.49,
+            8.42,
+            6.32,
+            9.52,
+            6.78,
+            6.7,
+            6.41,
+            7.98,
+            4.72,
+            7.19,
+            7.52,
+            9.59,
+            8.11,
+            8.14,
+            4.92,
+            3.78,
+            8.65,
+            8.81,
+            8.96,
+            9.81,
+            8.1
+          ]
+        }
+      },
+      "effect": {
+        "difference": 2.77,
+        "direction": "up",
+        "cohensD": 1.6,
+        "pAdjusted": 1e-16,
+        "plainSize": "large"
+      },
+      "genesChanged": 521,
+      "interpretation": [
+        {
+          "id": "i1",
+          "text": "PLACEHOLDER chunk 1 for Microglia \u2014 Giulio writes this. Do not invent replacement text."
+        },
+        {
+          "id": "i2",
+          "text": "PLACEHOLDER chunk 2 for Microglia \u2014 Giulio writes this. Do not invent replacement text."
+        },
+        {
+          "id": "i3",
+          "text": "PLACEHOLDER chunk 3 for Microglia \u2014 Giulio writes this. Do not invent replacement text."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": "PLACEHOLDER question 1 about Microglia, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i1"
+        },
+        {
+          "id": "q2",
+          "prompt": "PLACEHOLDER question 2 about Microglia, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i2"
+        },
+        {
+          "id": "q3",
+          "prompt": "PLACEHOLDER question 3 about Microglia, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i3"
+        }
+      ],
+      "topGenes": [
+        {
+          "symbol": "TREM2",
+          "name": "Triggering receptor expressed on myeloid cells 2",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 0.42,
+              "sd": 0.12
+            },
+            "dementia": {
+              "mean": 0.84,
+              "sd": 0.25
+            }
+          },
+          "log2FC": 1.0,
+          "pAdjusted": 0.00982,
+          "direction": "up",
+          "alsoExpressedIn": [
+            {
+              "cellType": "excitatory-neurons",
+              "mean": 0.4
+            },
+            {
+              "cellType": "astrocytes",
+              "mean": 0.15
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.43
+            },
+            {
+              "cellType": "opcs",
+              "mean": 0.36
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        },
+        {
+          "symbol": "CD74",
+          "name": "CD74 molecule",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 0.74,
+              "sd": 0.21
+            },
+            "dementia": {
+              "mean": 0.35,
+              "sd": 0.1
+            }
+          },
+          "log2FC": -1.08,
+          "pAdjusted": 0.00305,
+          "direction": "down",
+          "alsoExpressedIn": [
+            {
+              "cellType": "excitatory-neurons",
+              "mean": 0.39
+            },
+            {
+              "cellType": "astrocytes",
+              "mean": 0.63
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.67
+            },
+            {
+              "cellType": "opcs",
+              "mean": 0.28
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        },
+        {
+          "symbol": "P2RY12",
+          "name": "Purinergic receptor P2Y12",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 0.72,
+              "sd": 0.2
+            },
+            "dementia": {
+              "mean": 1.71,
+              "sd": 0.51
+            }
+          },
+          "log2FC": 1.25,
+          "pAdjusted": 0.00949,
+          "direction": "up",
+          "alsoExpressedIn": [
+            {
+              "cellType": "excitatory-neurons",
+              "mean": 0.02
+            },
+            {
+              "cellType": "astrocytes",
+              "mean": 0.57
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.47
+            },
+            {
+              "cellType": "opcs",
+              "mean": 0.17
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        }
+      ],
+      "storyRole": "changed"
+    },
+    {
+      "id": "inhibitory-neurons",
+      "label": "Inhibitory neurons",
+      "shortRole": "The brake cells",
+      "role": "They quieten other neurons down, which keeps signalling under control.",
+      "values": {
+        "normal": {
+          "mean": 9.91,
+          "sd": 1.48,
+          "n": 42,
+          "donorValues": [
+            11.7,
+            8.16,
+            8.24,
+            13.15,
+            11.29,
+            9.92,
+            10.01,
+            10.21,
+            9.8,
+            8.09,
+            7.72,
+            10.73,
+            9.78,
+            7.21,
+            11.87,
+            9.47,
+            8.62,
+            14.01,
+            10.59,
+            8.45,
+            9.94,
+            8.99,
+            9.61,
+            7.77,
+            12.37,
+            9.63,
+            9.7,
+            9.33,
+            10.69,
+            9.28,
+            10.48,
+            9.65,
+            9.93,
+            10.5,
+            10.93,
+            9.06,
+            8.16,
+            11.68,
+            11.15,
+            8.15,
+            9.65,
+            10.67
+          ]
+        },
+        "dementia": {
+          "mean": 8.67,
+          "sd": 2.09,
+          "n": 42,
+          "donorValues": [
+            6.9,
+            10.46,
+            11.48,
+            7.36,
+            8.88,
+            7.32,
+            7.51,
+            6.6,
+            8.47,
+            11.14,
+            7.87,
+            4.77,
+            10.88,
+            5.13,
+            7.42,
+            7.77,
+            8.24,
+            6.24,
+            7.38,
+            10.4,
+            10.08,
+            10.17,
+            7.75,
+            7.69,
+            10.48,
+            5.88,
+            11.12,
+            10.71,
+            5.71,
+            7.81,
+            8.57,
+            10.37,
+            6.33,
+            8.87,
+            11.61,
+            12.74,
+            8.51,
+            11.36,
+            10.37,
+            11.18,
+            4.85,
+            9.7
+          ]
+        }
+      },
+      "effect": {
+        "difference": -1.24,
+        "direction": "down",
+        "cohensD": -0.69,
+        "pAdjusted": 0.00236,
+        "plainSize": "moderate"
+      },
+      "genesChanged": 499,
+      "interpretation": [
+        {
+          "id": "i1",
+          "text": "PLACEHOLDER chunk 1 for Inhibitory neurons \u2014 Giulio writes this. Do not invent replacement text."
+        },
+        {
+          "id": "i2",
+          "text": "PLACEHOLDER chunk 2 for Inhibitory neurons \u2014 Giulio writes this. Do not invent replacement text."
+        },
+        {
+          "id": "i3",
+          "text": "PLACEHOLDER chunk 3 for Inhibitory neurons \u2014 Giulio writes this. Do not invent replacement text."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": "PLACEHOLDER question 1 about Inhibitory neurons, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i1"
+        },
+        {
+          "id": "q2",
+          "prompt": "PLACEHOLDER question 2 about Inhibitory neurons, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i2"
+        },
+        {
+          "id": "q3",
+          "prompt": "PLACEHOLDER question 3 about Inhibitory neurons, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i3"
+        }
+      ],
+      "topGenes": [
+        {
+          "symbol": "GAD1",
+          "name": "Glutamate decarboxylase 1",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 1.11,
+              "sd": 0.31
+            },
+            "dementia": {
+              "mean": 1.82,
+              "sd": 0.55
+            }
+          },
+          "log2FC": 0.71,
+          "pAdjusted": 0.00332,
+          "direction": "up",
+          "alsoExpressedIn": [
+            {
+              "cellType": "excitatory-neurons",
+              "mean": 0.67
+            },
+            {
+              "cellType": "astrocytes",
+              "mean": 0.47
+            },
+            {
+              "cellType": "microglia",
+              "mean": 0.79
+            },
+            {
+              "cellType": "opcs",
+              "mean": 0.22
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        },
+        {
+          "symbol": "SST",
+          "name": "Somatostatin",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 0.41,
+              "sd": 0.11
+            },
+            "dementia": {
+              "mean": 0.19,
+              "sd": 0.06
+            }
+          },
+          "log2FC": -1.11,
+          "pAdjusted": 0.00576,
+          "direction": "down",
+          "alsoExpressedIn": [
+            {
+              "cellType": "excitatory-neurons",
+              "mean": 0.74
+            },
+            {
+              "cellType": "astrocytes",
+              "mean": 0.81
+            },
+            {
+              "cellType": "microglia",
+              "mean": 0.12
+            },
+            {
+              "cellType": "opcs",
+              "mean": 0.18
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        }
+      ]
+    },
+    {
+      "id": "opcs",
+      "label": "Oligodendrocyte precursors",
+      "shortRole": "Cells waiting to become insulation",
+      "role": "They are the spare parts that can turn into the cells that insulate nerve fibres.",
+      "values": {
+        "normal": {
+          "mean": 4.43,
+          "sd": 0.77,
+          "n": 42,
+          "donorValues": [
+            4.13,
+            4.38,
+            4.78,
+            3.52,
+            4.21,
+            4.19,
+            4.3,
+            5.0,
+            4.0,
+            3.9,
+            2.97,
+            3.2,
+            4.15,
+            4.06,
+            4.91,
+            5.75,
+            4.63,
+            5.36,
+            4.12,
+            5.21,
+            4.1,
+            5.17,
+            4.25,
+            6.15,
+            2.97,
+            5.3,
+            4.66,
+            3.46,
+            4.05,
+            4.68,
+            2.92,
+            3.93,
+            4.52,
+            5.11,
+            4.6,
+            4.48,
+            4.19,
+            4.96,
+            6.21,
+            4.1,
+            4.6,
+            5.01
+          ]
+        },
+        "dementia": {
+          "mean": 4.1,
+          "sd": 0.87,
+          "n": 42,
+          "donorValues": [
+            4.0,
+            4.12,
+            4.57,
+            4.06,
+            3.89,
+            4.14,
+            5.08,
+            3.39,
+            3.37,
+            3.67,
+            3.95,
+            3.89,
+            4.1,
+            2.93,
+            4.54,
+            5.25,
+            5.2,
+            4.14,
+            3.96,
+            2.82,
+            4.6,
+            4.84,
+            4.55,
+            3.09,
+            2.89,
+            2.68,
+            6.43,
+            4.4,
+            5.63,
+            3.97,
+            4.37,
+            4.46,
+            3.33,
+            2.35,
+            3.32,
+            3.56,
+            3.67,
+            4.32,
+            3.35,
+            5.52,
+            4.14,
+            5.58
+          ]
+        }
+      },
+      "effect": {
+        "difference": -0.33,
+        "direction": "down",
+        "cohensD": -0.41,
+        "pAdjusted": 0.0658,
+        "plainSize": "small"
+      },
+      "genesChanged": 372,
+      "interpretation": [
+        {
+          "id": "i1",
+          "text": "PLACEHOLDER chunk 1 for Oligodendrocyte precursors \u2014 Giulio writes this. Do not invent replacement text."
+        },
+        {
+          "id": "i2",
+          "text": "PLACEHOLDER chunk 2 for Oligodendrocyte precursors \u2014 Giulio writes this. Do not invent replacement text."
+        },
+        {
+          "id": "i3",
+          "text": "PLACEHOLDER chunk 3 for Oligodendrocyte precursors \u2014 Giulio writes this. Do not invent replacement text."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": "PLACEHOLDER question 1 about Oligodendrocyte precursors, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i1"
+        },
+        {
+          "id": "q2",
+          "prompt": "PLACEHOLDER question 2 about Oligodendrocyte precursors, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i2"
+        },
+        {
+          "id": "q3",
+          "prompt": "PLACEHOLDER question 3 about Oligodendrocyte precursors, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i3"
+        }
+      ],
+      "topGenes": [
+        {
+          "symbol": "PDGFRA",
+          "name": "Platelet derived growth factor receptor alpha",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 1.08,
+              "sd": 0.3
+            },
+            "dementia": {
+              "mean": 2.12,
+              "sd": 0.64
+            }
+          },
+          "log2FC": 0.97,
+          "pAdjusted": 0.008,
+          "direction": "up",
+          "alsoExpressedIn": [
+            {
+              "cellType": "excitatory-neurons",
+              "mean": 0.5
+            },
+            {
+              "cellType": "astrocytes",
+              "mean": 0.29
+            },
+            {
+              "cellType": "microglia",
+              "mean": 0.23
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.78
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        },
+        {
+          "symbol": "CSPG4",
+          "name": "Chondroitin sulfate proteoglycan 4",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 1.91,
+              "sd": 0.53
+            },
+            "dementia": {
+              "mean": 1.01,
+              "sd": 0.3
+            }
+          },
+          "log2FC": -0.92,
+          "pAdjusted": 0.00934,
+          "direction": "down",
+          "alsoExpressedIn": [
+            {
+              "cellType": "excitatory-neurons",
+              "mean": 0.6
+            },
+            {
+              "cellType": "astrocytes",
+              "mean": 0.51
+            },
+            {
+              "cellType": "microglia",
+              "mean": 0.43
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.36
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        }
+      ]
+    },
+    {
+      "id": "oligodendrocytes",
+      "label": "Oligodendrocytes",
+      "shortRole": "The insulating cells",
+      "role": "They wrap nerve fibres in a fatty layer so signals travel quickly.",
+      "values": {
+        "normal": {
+          "mean": 27.97,
+          "sd": 2.87,
+          "n": 42,
+          "donorValues": [
+            30.21,
+            31.7,
+            34.79,
+            28.46,
+            31.59,
+            27.79,
+            25.9,
+            25.91,
+            24.51,
+            25.8,
+            28.91,
+            31.81,
+            21.45,
+            25.49,
+            26.52,
+            29.1,
+            28.7,
+            27.89,
+            28.13,
+            29.81,
+            32.11,
+            29.77,
+            27.58,
+            27.65,
+            29.85,
+            26.54,
+            28.46,
+            26.72,
+            28.0,
+            27.41,
+            32.09,
+            26.5,
+            29.73,
+            25.3,
+            23.15,
+            25.78,
+            30.75,
+            25.18,
+            27.11,
+            31.32,
+            20.9,
+            28.3
+          ]
+        },
+        "dementia": {
+          "mean": 27.74,
+          "sd": 3.4,
+          "n": 42,
+          "donorValues": [
+            29.08,
+            27.82,
+            29.98,
+            29.66,
+            26.92,
+            28.16,
+            24.93,
+            25.11,
+            25.15,
+            32.24,
+            33.1,
+            33.24,
+            23.32,
+            26.38,
+            24.9,
+            24.75,
+            30.56,
+            25.6,
+            26.94,
+            25.48,
+            28.38,
+            26.2,
+            27.65,
+            28.53,
+            30.88,
+            18.27,
+            26.86,
+            28.1,
+            30.8,
+            29.48,
+            27.31,
+            33.16,
+            26.07,
+            33.61,
+            26.83,
+            20.61,
+            21.74,
+            28.74,
+            30.25,
+            32.7,
+            29.1,
+            26.51
+          ]
+        }
+      },
+      "effect": {
+        "difference": -0.23,
+        "direction": "none",
+        "cohensD": -0.07,
+        "pAdjusted": 0.742,
+        "plainSize": "small"
+      },
+      "genesChanged": 483,
+      "interpretation": [
+        {
+          "id": "i1",
+          "text": "PLACEHOLDER chunk 1 for Oligodendrocytes \u2014 Giulio writes this. Do not invent replacement text."
+        },
+        {
+          "id": "i2",
+          "text": "PLACEHOLDER chunk 2 for Oligodendrocytes \u2014 Giulio writes this. Do not invent replacement text."
+        },
+        {
+          "id": "i3",
+          "text": "PLACEHOLDER chunk 3 for Oligodendrocytes \u2014 Giulio writes this. Do not invent replacement text."
+        }
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": "PLACEHOLDER question 1 about Oligodendrocytes, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i1"
+        },
+        {
+          "id": "q2",
+          "prompt": "PLACEHOLDER question 2 about Oligodendrocytes, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i2"
+        },
+        {
+          "id": "q3",
+          "prompt": "PLACEHOLDER question 3 about Oligodendrocytes, answerable from the chart on screen.",
+          "options": [
+            {
+              "id": "a",
+              "text": "PLACEHOLDER option A"
+            },
+            {
+              "id": "b",
+              "text": "PLACEHOLDER option B"
+            },
+            {
+              "id": "c",
+              "text": "PLACEHOLDER option C"
+            }
+          ],
+          "correct": "b",
+          "feedback": {
+            "a": "PLACEHOLDER \u2014 points back at what to look at.",
+            "b": "PLACEHOLDER \u2014 confirms and says why.",
+            "c": "PLACEHOLDER \u2014 points back at what to look at."
+          },
+          "unlocks": "i3"
+        }
+      ],
+      "topGenes": [
+        {
+          "symbol": "PLP1",
+          "name": "Proteolipid protein 1",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 1.8,
+              "sd": 0.5
+            },
+            "dementia": {
+              "mean": 4.07,
+              "sd": 1.22
+            }
+          },
+          "log2FC": 1.18,
+          "pAdjusted": 0.00698,
+          "direction": "up",
+          "alsoExpressedIn": [
+            {
+              "cellType": "excitatory-neurons",
+              "mean": 0.36
+            },
+            {
+              "cellType": "astrocytes",
+              "mean": 0.14
+            },
+            {
+              "cellType": "microglia",
+              "mean": 0.38
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.36
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        },
+        {
+          "symbol": "MBP",
+          "name": "Myelin basic protein",
+          "plainRole": "PLACEHOLDER \u2014 one plain sentence on what this gene does.",
+          "values": {
+            "normal": {
+              "mean": 0.86,
+              "sd": 0.24
+            },
+            "dementia": {
+              "mean": 0.33,
+              "sd": 0.1
+            }
+          },
+          "log2FC": -1.38,
+          "pAdjusted": 0.00685,
+          "direction": "down",
+          "alsoExpressedIn": [
+            {
+              "cellType": "excitatory-neurons",
+              "mean": 0.43
+            },
+            {
+              "cellType": "astrocytes",
+              "mean": 0.07
+            },
+            {
+              "cellType": "microglia",
+              "mean": 0.58
+            },
+            {
+              "cellType": "inhibitory-neurons",
+              "mean": 0.52
+            }
+          ],
+          "note": "PLACEHOLDER \u2014 one or two sentences on why this change might matter."
+        }
+      ],
+      "storyRole": "stable"
+    }
+  ]
+}
