@@ -12,10 +12,102 @@
     tabs: 'Sections', newTab: '(opens in a new tab)', unitMissing: '[unit missing]',
     showAnswer: 'Show me the answer', tried: 'tried', copied: 'Copied', copySelected: 'Selected — copy it with your device',
     you: 'you', step: 'Step', modelAnswer: 'Show a model answer', nextCase: 'Next simulation',
-    loadFailTitle: 'The data did not load',
+    skipPoll: 'Skip poll', pollSkipped: 'Poll skipped. You can still take it any time.', takePoll: 'Take the poll instead',
+    stageOf: 'Stage', stageNames: ['Warm-Up Poll', 'Guided Simulations', 'Solo Explore'], simShort: 'Sim', simLong: 'Simulation',
+    soloCta: 'Ready to test your own question?', soloGo: 'Go to Solo Explore',
+    toStart: 'back to the start', loadFailTitle: 'The data did not load',
     loadFailHelp: 'If you opened this page straight from a folder, serve the folder instead: run “python3 -m http.server” in it and open http://localhost:8000.',
   };
   const ui = (k) => (data && data.ui && data.ui[k]) || UI[k];
+
+  /* Plain-English wording. It is laid over the data file when the page loads, so data/seaad-mtg.json itself stays untouched.
+     Objects merge key by key; lists and strings replace what the data file has. */
+  const COPY = {
+    nav: { prize: '£50 Essay Prize', ucas: 'UCAS & Careers', teachers: 'For Teachers' },
+    hero: {
+      title: 'AlzExplore',
+      description: 'Dig into real brain-cell data from people with Alzheimer’s. Spot the pattern yourself and think like a scientist.',
+      cta: 'Start Warm-Up Poll',
+      prize: {
+        badge: '{{prizeValue}} Essay Prize',
+        heading: 'Found a pattern? Turn it into a {{prizeValue}} essay.',
+        body: 'Write {{wordsMin}}–{{wordsMax}} words about what you just discovered. Every entry gets personal feedback. Winners get a {{prizeValue}} voucher.',
+        cta: 'See how to enter',
+      },
+    },
+    poll: {
+      heading: 'Warm-up poll',
+      framing: 'Six quick true-or-false questions about Alzheimer’s. Can you beat the average teenager?',
+      classCodeHint: 'Your teacher may give you a code, like BIOL-12. Working alone? Leave it blank.',
+      privacyLocal: 'Your answers stay on this device.',
+      privacyShared: 'Your six answers and class code go to the workshop organiser. No name. No email.',
+      resultCompare: 'The average teenager in the study got {{benchmarkMean}} right.',
+      decodersHeading: 'Three ideas to take with you',
+      decoders: [
+        { title: 'Dementia is the symptoms. Alzheimer’s is one cause.', body: 'Dementia means memory loss and confusion that get in the way of daily life. Alzheimer’s disease is the most common cause of it.' },
+        { title: 'Some brain cells are hit harder than others', body: 'The brain has many cell types. A disease can change some a lot and others barely at all. Which ones? That is your big question.' },
+        { title: 'Reading genes, one cell at a time', body: 'Every cell has the same DNA, but each cell type switches on different genes. Counting the mRNA in one nucleus shows which genes are on, and what type of cell it is.' },
+      ],
+      labCta: 'Continue to Guided Simulations',
+    },
+    lab: {
+      heading: 'The Data Lab',
+      intro: 'Every dot is one person who donated their brain to research. Try the guided simulations first. Then explore on your own.',
+      originHeading: 'Where do these dots come from?',
+      originBody: ['Each dot is one cell from a donated brain. We measured {{cellsTotal}} from {{donorTotal}}. Press the button to sort them by cell type.'],
+      mapAlt: 'A cloud of dots. Mixed up at first, they sort into groups of coloured dots, one colour for each cell type.',
+      captionUnsorted: 'All the cells, mixed together.',
+      captionSorted: 'The same cells, grouped by type.',
+      modeGuided: 'Guided Simulations',
+      modeSandbox: 'Solo Explore',
+      overlayLabel: 'Show median & IQR',
+      cheatHeading: 'Skills cheat-sheet',
+      dotNote: '1 dot = 1 donor. The thick line is the median. The box shows the middle half of donors (the IQR).',
+      cheats: [
+        { title: 'Correlation is not causation', body: 'Two things moving together does not mean one causes the other.' },
+        { title: 'Sample size', body: 'Check the n under each group. Few donors means a shaky pattern.' },
+        { title: 'Confounders', body: 'Age, sex or genes could explain a difference too. Split the data and see if the pattern holds.' },
+        { title: 'Post-mortem tissue', body: 'Each brain is measured once, after death. You never see one person change over time.' },
+        { title: 'mRNA is not protein', body: 'More mRNA often means more protein, but not always.' },
+      ],
+      stressIntro: 'Groups can differ in more than disease stage. Pick a variable and split every group by it. Does the pattern survive?',
+      stressCountsNote: 'If one column is mostly one kind of donor, that variable is tangled up with the groups.',
+      observeMatch: 'The median is {{trend}} in the last group than the first. That matches your prediction.',
+      observeMiss: 'The median is {{trend}} in the last group than the first. You predicted {{prediction}}. A wrong prediction is useful: it shows what to look at again.',
+      observeNoPrediction: 'The median is {{trend}} in the last group than the first.',
+      sandboxIntro: 'No task and no marks. Pick a launchpad or build your own question.',
+      toSandbox: 'Go to Solo Explore',
+      snapshotBridge: 'Found something interesting? Turn it into a {{prizeValue}} essay entry',
+    },
+    prize: {
+      intro: 'Turn any finding from the Data Lab into a short essay.',
+      builderIntro: 'Four boxes. One for each part of a scientific argument. Your draft saves on this device only.',
+      submitHeading: 'Submit your essay',
+      submitPrivacy: ['The entry form is on another website, not this one.', 'It asks for your name, email, school, class code, how confident you feel about a STEM degree, and your essay.', 'PLACEHOLDER: who sees entries, how long they are kept, and what under-16s need to do.'],
+    },
+    ucas: {
+      intro: 'Nobody is born knowing how university applications work. Here is what people rarely say out loud.',
+      statementIntro: 'Admissions tutors want to know what you did and what you learned. “I found it interesting” does not tell them.',
+      statementWhy: ['It names the data and the method.', 'It says exactly what was analysed.', 'It ends on a skill, not a feeling.'],
+      statementWarning: 'Do not copy this sentence. UCAS checks every application for matching text. Write about what you actually did, in your own words.',
+      comp: [
+        'Biomedical research is not only lab coats and pipettes. A lot of it happens on a computer.',
+        'Computational biologists write code to find patterns in huge biological datasets, like the one on this site. The same skills power bioinformatics, health data science and AI in healthcare.',
+        'You can get there from biology, biochemistry, biomedical science, maths, computer science or physics. Entry requirements differ, so check each course on UCAS.',
+      ],
+    },
+    teachers: {
+      intro: 'A free 50-minute workshop on Alzheimer’s and gene expression for Year 12 and 13, built on real research data.',
+      value: ['Runs in the browser on a school Chromebook. No accounts. Nothing to install.', 'Keeps working if the school Wi-Fi drops.', 'One lesson: warm-up poll, guided simulations, then solo exploring.', 'The essay prize is optional follow-up work.'],
+      sensitivity: 'Some students care for, or have lost, someone with dementia. Tell the class the topic beforehand and say where support is in school.',
+    },
+  };
+  const merge = (base, over) => {
+    if (!over || typeof over !== 'object' || Array.isArray(over)) return over;
+    const out = Object.assign({}, base && typeof base === 'object' && !Array.isArray(base) ? base : {});
+    for (const [k, v] of Object.entries(over)) out[k] = merge(out[k], v);
+    return out;
+  };
 
   const $ = (id) => document.getElementById(id);
   const main = $('main');
@@ -23,11 +115,11 @@
   let data = null;
 
   const state = {
-    tab: '', plain: false, overlay: true, mode: 'guided',
+    tab: '', plain: false, overlay: true, stage: 1,
     caseId: null, step: 0, view: 0, predictions: {}, strat: {},
     sandbox: null, snapshotMade: false,
     cloze: new Map(), map: { sorted: false, focus: null },
-    poll: { answers: {}, classCode: '', submitted: null },
+    poll: { answers: {}, classCode: '', submitted: null, skipped: false },
   };
 
   /* ---------- helpers ---------- */
@@ -562,24 +654,47 @@
     const hd = el.querySelector('h2');
     if (hd) { hd.setAttribute('tabindex', '-1'); hd.focus({ preventScroll: true }); }
   }
+  // Repaint a panel in place: pin its height and the scroll position so the page never jumps.
+  function keepScroll(box, fn) {
+    const y = window.scrollY;
+    box.style.minHeight = box.offsetHeight + 'px';
+    fn();
+    window.scrollTo(window.scrollX, y);
+    requestAnimationFrame(() => { window.scrollTo(window.scrollX, y); box.style.minHeight = ''; });
+  }
   const arrow = (ch) => h('span', { class: 'arr', 'aria-hidden': 'true', text: ch });
 
   /* ---------- view 1: home — hero, poll, data lab ---------- */
 
+  // Stage switcher: three small pills. Clicking one reveals that stage and scrolls to the top of it.
+  function stageBar(current) {
+    const names = list(ui('stageNames'));
+    const has = (n) => n === 1 ? !!data.poll : n === 2 ? list(data.caseStudies).length > 0 && !!data.lab : !!data.lab;
+    return h('ol', { class: 'stagebar', 'aria-label': ui('stageOf') }, [1, 2, 3].filter(has).map((n) => h('li', {},
+      h('button', { type: 'button', class: 'stagepill', 'aria-current': n === current ? 'step' : null, onclick: () => goStage(n) },
+        h('span', { class: 'qn', 'aria-hidden': 'true', text: String(n) }), h('span', { class: 'sr', text: ui('stageOf') + ' ' }), names[n - 1] || ''))));
+  }
+  const stageHead = (n, title, intro) => h('div', { class: 'stagehead' }, stageBar(n), heading(2, title), para(intro, 'lede'));
+
   function heroBlock() {
     const hero = data.hero || {};
-    const prize = hero.prize || null;
-    return h('section', { class: 'hero' },
-      h('div', { class: 'hero-main' },
-        h('h1', { tabindex: '-1', text: hero.title || data.meta.title || '' }),
-        para(hero.subtitle, 'subtitle'),
-        para(hero.description, 'lede'),
-        data.poll && isText(hero.cta) && h('button', { type: 'button', class: 'btn big', onclick: () => scrollToId('poll') }, hero.cta, arrow('↓'))),
-      prize && data.prize && h('aside', { class: 'prizecard' },
-        isText(prize.badge) && h('p', { class: 'badge', text: prize.badge }),
-        heading(2, prize.heading),
-        para(prize.body),
-        isText(prize.cta) && h('a', { class: 'btn gold', href: '#prize' }, prize.cta, arrow('→'))));
+    const title = hero.title || data.meta.title || '';
+    const m = /^(Alz)(.+)$/.exec(title);
+    return h('section', { class: 'bandfull herob' }, h('div', { class: 'wrap' }, h('div', { class: 'hero' },
+      h('h1', { tabindex: '-1' }, m ? [h('span', { class: 'alz', text: m[1] }), m[2]] : title),
+      para(hero.description, 'lede'),
+      data.poll && isText(hero.cta) && h('button', { type: 'button', class: 'btn big light', onclick: () => goStage(1) }, hero.cta, arrow('↓')))));
+  }
+
+  // The celebratory prize card that closes the learning journey.
+  function prizeCallout() {
+    const prize = (data.hero || {}).prize;
+    if (!prize || !data.prize) return null;
+    return h('section', { class: 'bandfull b-white', id: 'journey-end' }, h('div', { class: 'wrap' }, h('aside', { class: 'prizecard' },
+      isText(prize.badge) && h('p', { class: 'badge', text: fill(prize.badge) }),
+      heading(2, prize.heading),
+      para(prize.body),
+      isText(prize.cta) && h('div', { class: 'actions' }, h('a', { class: 'btn gold big', href: '#prize' }, prize.cta, arrow('→'))))));
   }
 
   function pollBlock() {
@@ -588,7 +703,9 @@
     const items = list(poll.items);
     const keys = ['true', 'false', 'dk'];
     const names = poll.options || {};
-    const box = h('section', { class: 'band', id: 'poll' });
+    const sec = h('section', { class: 'bandfull b-lav', id: 'poll' });
+    const box = h('div', { class: 'wrap' });
+    sec.append(box);
     const endpoint = isUrl((data.config || {}).pollEndpoint) ? data.config.pollEndpoint : null;
     const P = state.poll;
     const csv = (rec) => {
@@ -597,10 +714,16 @@
       return [head, row].map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
     };
 
-    const paint = (focus) => {
+    const goLab = () => h('div', { class: 'cta-row' }, data.lab && isText(poll.labCta) && h('button', { type: 'button', class: 'btn big', 'data-k': 'continue', onclick: () => goStage(2) }, poll.labCta, arrow('→')));
+    const paint = (focus) => keepScroll(box, () => paintNow(focus));
+    const paintNow = (focus) => {
       const done = P.submitted;
-      const kids = [heading(2, poll.heading), para(poll.framing, 'lede')];
-      if (!done) {
+      const kids = [stageHead(1, poll.heading, poll.framing)];
+      if (!done && P.skipped) {
+        kids.push(h('div', { class: 'card stack' }, h('p', { class: 'statement', text: ui('pollSkipped') }), h('div', { class: 'cta-row' },
+          data.lab && isText(poll.labCta) && h('button', { type: 'button', class: 'btn big', 'data-k': 'continue', onclick: () => goStage(2) }, poll.labCta, arrow('→')),
+          h('button', { type: 'button', class: 'linkbtn', text: ui('takePoll'), onclick: () => { P.skipped = false; paint('form'); } }))));
+      } else if (!done) {
         const count = () => items.filter((i) => P.answers[i.id]).length;
         const submit = h('button', { type: 'submit', class: 'btn big', disabled: count() < items.length, text: poll.submitLabel || '' });
         const progress = h('span', { class: 'small', role: 'status', text: fill(poll.progressLabel, { answered: count(), total: items.length }) });
@@ -611,7 +734,7 @@
           P.submitted = { at: new Date().toISOString(), classCode: P.classCode.trim().slice(0, 24), answers: Object.assign({}, P.answers), score };
           store.set('poll', P.submitted);
           if (endpoint) { try { fetch(endpoint, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(P.submitted) }).catch(() => {}); } catch (e) { /* offline: the result is still shown */ } }
-          paint('result');
+          paintNow('result');
         } },
           h('ol', { class: 'poll-items' }, items.map((item, n) => h('li', {}, h('fieldset', {},
             h('legend', {}, h('span', { class: 'qn', 'aria-hidden': 'true', text: String(n + 1) }), `“${item.statement}”`),
@@ -625,12 +748,14 @@
             h('input', { id: 'classcode', type: 'text', maxlength: '24', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', value: P.classCode, 'aria-describedby': isText(poll.classCodeHint) ? 'classcode-hint' : null, oninput: (ev) => { P.classCode = ev.target.value; } }),
             isText(poll.classCodeHint) && h('p', { id: 'classcode-hint', class: 'small', text: poll.classCodeHint })),
           h('div', { class: 'actions' }, submit, progress),
-          para(endpoint ? poll.privacyShared : poll.privacyLocal, 'small')));
+          para(endpoint ? poll.privacyShared : poll.privacyLocal, 'small'),
+          h('div', { class: 'skiprow' }, h('button', { type: 'button', class: 'skiplink', onclick: () => { P.skipped = true; paint('skipped'); } }, ui('skipPoll') + ' →'))));
       } else {
         const mean = items.reduce((a, i) => a + ((i.benchmark || {})[i.correct] || 0), 0) / items.length;
         kids.push(h('div', { class: 'result' },
           h('h3', { class: 'score', tabindex: '-1' }, fillNodes(poll.resultHeading, { score: done.score, total: items.length })),
           para(poll.resultCompare, null, { benchmarkMean: qty(mean, '%', 0) }),
+          goLab(),
           h('ol', { class: 'compare' }, items.map((item) => {
             const b = item.benchmark || {};
             const mine = done.answers[item.id];
@@ -642,7 +767,7 @@
               h('div', { class: 'bar', role: 'img', 'aria-label': [poll.benchmarkLabel, keys.map((k) => `${names[k] || k} ${qty(b[k], '%', 1)}`).join(', ')].filter(isText).join(': ') },
                 keys.map((k) => (isNum(b[k]) ? h('span', { class: 'seg ' + k + (k === item.correct ? ' correct' : ''), style: `width:${b[k]}%` }) : null))),
               h('p', { class: 'small barkey' }, isText(poll.benchmarkLabel) && h('b', { text: poll.benchmarkLabel + ': ' }), keys.map((k, i) => h('span', { class: k === item.correct ? 'kcorrect' : null },
-                `${names[k] || k} ${qty(b[k], '%', 1)}`, mine === k && h('i', { text: ` (${ui('you')})` }), i < keys.length - 1 ? ' · ' : ''))));
+                `${names[k] || k} ${qty(b[k], '%', 1)}`, mine === k && h('span', { text: ` (${ui('you')})` }), i < keys.length - 1 ? ' · ' : ''))));
           })),
           (isText(poll.benchmarkSource) || isUrl(poll.benchmarkSourceUrl)) && h('p', { class: 'small' }, poll.benchmarkSource || '', ' ', isUrl(poll.benchmarkSourceUrl) && linkOut(poll.benchmarkSourceUrl, poll.benchmarkSourceUrl.replace(/^https:\/\/([^/]+).*$/, '$1'), 'inline')),
           h('div', { class: 'actions' },
@@ -653,14 +778,15 @@
           kids.push(heading(3, poll.decodersHeading, null, 'subhead'),
             h('ul', { class: 'bento three' }, list(poll.decoders).map((d) => h('li', { class: 'card' }, heading(4, d.title), para(d.body)))));
         }
-        if (data.lab && isText(poll.labCta)) kids.push(h('div', { class: 'actions' }, h('button', { type: 'button', class: 'btn big', onclick: () => scrollToId('lab') }, poll.labCta, arrow('↓'))));
+        kids.push(goLab());
       }
       box.replaceChildren(...kids.flat(Infinity).filter(Boolean));
       if (focus === 'result') { const t = box.querySelector('.score'); if (t) { t.focus({ preventScroll: true }); t.scrollIntoView({ block: 'start', behavior: reducedMotion.matches ? 'auto' : 'smooth' }); } }
-      if (focus === 'form') { const t = box.querySelector('input'); if (t) t.focus(); }
+      if (focus === 'form') { const t = box.querySelector('input'); if (t) t.focus({ preventScroll: true }); }
+      if (focus === 'skipped') { const t = box.querySelector('[data-k="continue"]'); if (t) t.focus({ preventScroll: true }); }
     };
-    paint(null);
-    return box;
+    paintNow(null);
+    return sec;
   }
 
   const currentCase = () => byId(data.caseStudies, state.caseId) || list(data.caseStudies)[0] || null;
@@ -669,40 +795,54 @@
     return { metric: first.metric, cellType: first.cellType, grouping: first.grouping || (list(data.groupings)[0] || {}).id };
   }
 
-  function labBlock() {
+  // Stages 2 and 3. Built once, on first reveal. Every control repaints only its own panel, in place.
+  function labStages() {
     const lab = data.lab;
     if (!lab || !list(data.series).length || !list(data.donors).length) return null;
-    const box = h('section', { class: 'band lab', id: 'lab' });
+    const hasGuided = list(data.caseStudies).length > 0;
+    const make = (id, cls) => { const sec = h('section', { class: 'bandfull ' + cls, id }); const box = h('div', { class: 'wrap' }); sec.append(box); return { sec, box }; };
+    const G = make('guided', 'b-lilac');
+    const S = make('solo', 'b-lav');
     let origin = null;      // built once, so the map keeps its state while the rest of the lab repaints
 
-    const paint = (focusKey) => {
+    const controls = (which) => {
       const pill = (key, on, text, onclick) => h('button', { type: 'button', class: 'switch', role: 'switch', 'aria-checked': on ? 'true' : 'false', 'data-k': key, onclick }, h('span', { class: 'knob', 'aria-hidden': 'true' }), h('span', { text }));
-      const controls = h('div', { class: 'labbar' },
-        isText(lab.translatorLabel) && pill('translator', state.plain, [lab.translatorLabel, state.plain ? lab.translatorOn : lab.translatorOff].filter(isText).join(': '), () => { state.plain = !state.plain; origin = null; paint('translator'); }),
-        isText(lab.overlayLabel) && pill('overlay', state.overlay, lab.overlayLabel, () => { state.overlay = !state.overlay; paint('overlay'); }));
-      const cheats = list(lab.cheats).length && isText(lab.cheatHeading) ? h('details', { class: 'drawer' }, h('summary', { text: lab.cheatHeading }),
-        h('ul', { class: 'bento five' }, list(lab.cheats).map((c) => h('li', { class: 'card mini' }, heading(4, c.title), para(c.body, 'small')))),
-        list(data.terms).length > 0 && h('ul', { class: 'terms small' }, list(data.terms).map((t) => h('li', {}, h('b', { text: t.research }), ' = ', t.plain)))) : null;
+      return h('div', { class: 'labbar' },
+        isText(lab.translatorLabel) && pill('translator', state.plain, [lab.translatorLabel, state.plain ? lab.translatorOn : lab.translatorOff].filter(isText).join(': '), () => { state.plain = !state.plain; origin = null; paintAll('translator', which); }),
+        isText(lab.overlayLabel) && pill('overlay', state.overlay, lab.overlayLabel, () => { state.overlay = !state.overlay; paintAll('overlay', which); }));
+    };
+    const cheatsBlock = () => (list(lab.cheats).length && isText(lab.cheatHeading) ? h('details', { class: 'drawer' }, h('summary', { text: lab.cheatHeading }),
+      h('ul', { class: 'bento five' }, list(lab.cheats).map((c) => h('li', { class: 'card mini' }, heading(4, c.title), para(c.body, 'small')))),
+      list(data.terms).length > 0 && h('ul', { class: 'terms small' }, list(data.terms).map((t) => h('li', {}, h('b', { text: t.research }), ' = ', t.plain)))) : null);
+    const focusIn = (box, key) => { if (!key) return; const t = box.querySelector(`[data-k="${key}"]`); if (t) t.focus({ preventScroll: true }); };
+
+    const paintGuided = (focusKey) => keepScroll(G.box, () => {
       if (!origin) {
         const map = mapBlock();
         const text = [paras(lab.originBody), figureCards(lab.originFigures)].flat(Infinity).filter(Boolean);
         origin = (map || text.length) && isText(lab.originHeading) ? h('details', { class: 'drawer origin', open: true }, h('summary', { text: lab.originHeading }),
           h('div', { class: 'origin-grid' }, text.length > 0 && h('div', { class: 'stack' }, text), map)) : false;
       }
-      const hasGuided = list(data.caseStudies).length > 0;
-      if (!hasGuided) state.mode = 'sandbox';
-      const tabs = hasGuided ? h('div', { class: 'modes', role: 'tablist' },
-        [['guided', lab.modeGuided], ['sandbox', lab.modeSandbox]].map(([id, text]) => h('button', { type: 'button', role: 'tab', 'aria-selected': state.mode === id ? 'true' : 'false', 'data-k': 'mode-' + id, onclick: () => { state.mode = id; paint('mode-' + id); } }, text || id))) : null;
-      box.replaceChildren(...[heading(2, lab.heading), para(lab.intro, 'lede'), origin, controls, cheats, tabs,
-        state.mode === 'guided' ? guidedBlock(paint) : sandboxBlock(paint)].flat(Infinity).filter(Boolean));
-      if (focusKey) { const t = box.querySelector(`[data-k="${focusKey}"]`); if (t) t.focus({ preventScroll: true }); }
-    };
+      G.box.replaceChildren(...[stageHead(2, lab.modeGuided || lab.heading, lab.intro), origin, controls('guided'), cheatsBlock(), guidedBlock(paintGuided)].flat(Infinity).filter(Boolean));
+      focusIn(G.box, focusKey);
+    });
+    const paintSolo = (focusKey) => keepScroll(S.box, () => {
+      S.box.replaceChildren(...[stageHead(3, lab.modeSandbox || lab.heading, lab.sandboxIntro), controls('solo'), sandboxBlock(paintSolo)].flat(Infinity).filter(Boolean));
+      focusIn(S.box, focusKey);
+    });
+    // The translator and chart switches are shared, so both panels are repainted; focus returns to the one that was used.
+    function paintAll(focusKey, which) {
+      if (hasGuided) paintGuided(which === 'guided' ? focusKey : null);
+      if (S.sec.isConnected || which === 'solo') paintSolo(which === 'solo' ? focusKey : null);
+    }
 
     function guidedBlock(repaint) {
       const cs = currentCase();
       const title = (c) => (state.plain && isText(c.plainTitle) ? c.plainTitle : c.title) || c.id;
-      const picker = h('ul', { class: 'cases' }, list(data.caseStudies).map((c, i) => h('li', {}, h('button', { type: 'button', class: 'casebtn', 'aria-pressed': c === cs ? 'true' : 'false', 'data-k': 'case-' + c.id,
-        onclick: () => { state.caseId = c.id; state.step = 0; state.view = 0; repaint('case-' + c.id); } }, h('span', { class: 'qn', 'aria-hidden': 'true', text: String(i + 1) }), title(c)))));
+      const idx = Math.max(0, list(data.caseStudies).indexOf(cs));
+      const picker = h('div', { class: 'simpills', role: 'group', 'aria-label': ui('simLong') },
+        list(data.caseStudies).map((c, i) => h('button', { type: 'button', class: 'chip', 'aria-pressed': c === cs ? 'true' : 'false', 'aria-label': `${ui('simLong')} ${i + 1}: ${title(c)}`, 'data-k': 'case-' + c.id,
+          onclick: () => { state.caseId = c.id; state.step = 0; state.view = 0; repaint('case-' + c.id); } }, `${ui('simShort')} ${i + 1}`)));
       const labels = list(lab.stepLabels);
       const stepper = h('ol', { class: 'stepper' }, [0, 1, 2, 3].map((i) => h('li', { class: i === state.step ? 'here' : i < state.step ? 'done' : '' }, h('button', { type: 'button', 'aria-current': i === state.step ? 'step' : null, 'data-k': 'step-' + i, onclick: () => { state.step = i; repaint('step-' + i); } },
         h('span', { class: 'qn', 'aria-hidden': 'true', text: String(i + 1) }), h('span', { class: 'sr', text: `${ui('step')} ${i + 1}: ` }), h('span', { class: 'steplabel', text: labels[i] || '' })))));
@@ -755,10 +895,11 @@
             h('dl', { class: 'model' }, isText(tk.claim) && h('div', {}, h('dt', { text: lab.takeawayClaimLabel || '' }), h('dd', { text: tk.claim })), isText(tk.limitation) && h('div', {}, h('dt', { text: lab.takeawayLimitLabel || '' }), h('dd', { text: tk.limitation })))),
           h('div', { class: 'actions' },
             isText(lab.backLabel) && h('button', { type: 'button', class: 'btn ghost', text: lab.backLabel, onclick: () => { state.step = 2; repaint('step-2'); } }),
-            next && next !== cs && h('button', { type: 'button', class: 'btn', onclick: () => { state.caseId = next.id; state.step = 0; state.view = 0; repaint('case-' + next.id); } }, ui('nextCase'), arrow('→')),
-            isText(lab.toSandbox) && h('button', { type: 'button', class: 'btn ghost', text: lab.toSandbox, onclick: () => { state.mode = 'sandbox'; repaint('mode-sandbox'); } }))];
+            next && next !== cs && h('button', { type: 'button', class: 'btn', onclick: () => { state.caseId = next.id; state.step = 0; state.view = 0; repaint('case-' + next.id); } }, ui('nextCase'), arrow('→')))];
       }
-      return h('div', { class: 'guided' }, picker, h('div', { class: 'card sim' }, h('h3', { text: title(cs) }), stepper, h('div', { class: 'stack stepbody' }, body)));
+      return h('div', { class: 'guided' },
+        h('div', { class: 'card sim' }, picker, h('h3', { class: 'simtitle', text: `${ui('simLong')} ${idx + 1}: ${title(cs)}` }), stepper, h('div', { class: 'stack stepbody' }, body)),
+        h('div', { class: 'to-solo' }, h('p', { text: ui('soloCta') }), h('button', { type: 'button', class: 'btn big', 'data-k': 'to-solo', onclick: () => goStage(3) }, ui('soloGo'), arrow('→'))));
     }
 
     function sandboxBlock(repaint) {
@@ -774,7 +915,6 @@
       const select = (key, options, value, onchange) => h('select', { 'data-k': key, 'aria-label': key, onchange: (ev) => { onchange(ev.target.value); state.snapshotMade = false; repaint(key); } }, options.map((o) => h('option', { value: o.id, selected: o.id === value }, label(o))));
       const pads = list(lab.launchpads);
       return h('div', { class: 'sandbox stack' },
-        para(lab.sandboxIntro),
         pads.length > 0 && h('ul', { class: 'bento three' }, pads.map((p) => h('li', {}, h('button', { type: 'button', class: 'card pad', 'aria-pressed': p.metric === sb.metric && p.cellType === sb.cellType && p.grouping === sb.grouping ? 'true' : 'false', 'data-k': 'pad-' + p.id,
           onclick: () => { state.sandbox = { metric: p.metric, cellType: p.cellType, grouping: p.grouping }; state.snapshotMade = false; repaint('pad-' + p.id); } },
           h('span', { class: 'padtitle', text: p.title || '' }), isText(p.blurb) && h('span', { class: 'small', text: p.blurb }),
@@ -791,11 +931,39 @@
           data.prize && isText(lab.snapshotBridge) && h('a', { href: '#prize' }, fillNodes(lab.snapshotBridge), arrow('→'))));
     }
 
-    paint(null);
-    return box;
+    if (hasGuided) paintGuided(null);
+    paintSolo(null);
+    return { guided: hasGuided ? G.sec : null, solo: S.sec };
   }
 
-  const renderHome = () => h('div', { class: 'view' }, heroBlock(), pollBlock(), labBlock());
+  /* The journey: hero, then stage 1 (poll), stage 2 (guided simulations), stage 3 (solo explore), then the prize card.
+     Later stages are added to the page only when the student asks for them, so there is no endless scroll. */
+  let homeView = null;
+  let labs = null;
+  let prizeBand = null;
+  function mountStages() {
+    if (!homeView) return;
+    if (!labs && state.stage >= 2) labs = labStages();
+    if (!labs) return;
+    if (state.stage >= 2 && labs.guided && !labs.guided.isConnected) homeView.append(labs.guided);
+    if (state.stage >= 3 && !labs.solo.isConnected) homeView.append(labs.solo);
+    if (state.stage >= 2) { if (!prizeBand) prizeBand = prizeCallout(); if (prizeBand) homeView.append(prizeBand); }
+  }
+  function goStage(n) {
+    if (n === 1) { scrollToId('poll'); return; }
+    if (n === 2 && !list(data.caseStudies).length) n = 3;
+    state.stage = Math.max(state.stage, n);
+    mountStages();
+    if (!labs) return;
+    requestAnimationFrame(() => scrollToId(n === 2 ? 'guided' : 'solo'));
+  }
+  function renderHome() {
+    labs = null; prizeBand = null;
+    if (!data.poll) state.stage = Math.max(state.stage, 2);
+    homeView = h('div', { class: 'view home' }, heroBlock(), pollBlock());
+    mountStages();
+    return homeView;
+  }
 
   /* ---------- view 2: the essay prize ---------- */
 
@@ -841,16 +1009,16 @@
     const hasDeadline = isText(cfg.essayDeadline) && cfg.essayDeadline !== 'PLACEHOLDER';
     return h('div', { class: 'view narrow' },
       h('header', { class: 'pagehead' }, h('h1', { tabindex: '-1' }, fillNodes(p.heading)), para(p.intro, 'lede')),
-      list(p.rules).length > 0 && h('section', { class: 'prizecard flat' }, heading(2, p.rulesHeading), h('ul', { class: 'ticks' }, list(p.rules).map((r) => h('li', {}, fillNodes(r)))),
-        hasDeadline && para(p.deadlineLabel, 'small')),
+      isText(p.submitLabel) && h('section', { class: 'prizecard flat stack' }, heading(2, p.submitHeading),
+        h('div', { class: 'actions' }, formButton(cfg.essayFormUrl, p.submitLabel, p.submitPending, 'essay-pending')), paras(p.submitPrivacy, 'small')),
       sections.length > 0 && h('section', { class: 'stack' }, heading(2, p.builderHeading), para(p.builderIntro), para(p.originalityNote, 'small'),
         h('div', { class: 'card essay stack' }, builder, total, h('div', { class: 'actions' }, copy, clear))),
-      isText(p.submitLabel) && h('section', { class: 'card stack' }, heading(2, p.submitHeading), paras(p.submitPrivacy, 'small'),
-        h('div', { class: 'actions' }, formButton(cfg.essayFormUrl, p.submitLabel, p.submitPending, 'essay-pending'))),
       list(p.rubric).length > 0 && levels.length > 0 && h('section', { class: 'stack' }, heading(2, p.rubricHeading), para(p.rubricNote, 'small'),
         h('div', { class: 'tablewrap' }, h('table', { class: 'rubric' },
           h('thead', {}, h('tr', {}, h('th', { scope: 'col', text: p.rubricCriterionLabel || '' }), levels.map((l) => h('th', { scope: 'col', text: l })))),
-          h('tbody', {}, list(p.rubric).map((r) => h('tr', {}, h('th', { scope: 'row', text: r.criterion || '' }), levels.map((_, i) => h('td', { text: list(r.levels)[i] || '–' })))))))));
+          h('tbody', {}, list(p.rubric).map((r) => h('tr', {}, h('th', { scope: 'row', text: r.criterion || '' }), levels.map((_, i) => h('td', { text: list(r.levels)[i] || '–' })))))))),
+      list(p.rules).length > 0 && h('section', { class: 'card stack' }, heading(2, p.rulesHeading), h('ul', { class: 'ticks' }, list(p.rules).map((r) => h('li', {}, fillNodes(r)))),
+        hasDeadline && para(p.deadlineLabel, 'small')));
   }
 
   /* ---------- view 3: UCAS and careers ---------- */
@@ -893,13 +1061,19 @@
 
   const TABS = ['home', 'prize', 'ucas', 'teachers'];
   const availableTabs = () => TABS.filter((id) => id === 'home' || data[id]);
+  // The logo always goes back to the start of the journey.
+  function toStart(ev) {
+    ev.preventDefault();
+    if (state.tab === 'home') { window.scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' }); if (location.hash) history.replaceState(null, '', location.pathname + location.search); return; }
+    location.hash = '#home';
+  }
 
   function renderNav() {
     const nav = $('tabs');
     nav.setAttribute('aria-label', ui('tabs'));
     nav.replaceChildren(
-      h('a', { class: 'brand', href: '#home', text: data.meta.title || '' }),
-      h('ul', {}, availableTabs().map((id) => h('li', {}, h('a', { href: '#' + id, class: id === 'prize' ? 'tab prize' : 'tab', 'aria-current': state.tab === id ? 'page' : null, text: (data.nav || {})[id] || id })))));
+      h('a', { class: 'brand', href: '#home', onclick: toStart, text: data.meta.title || '' }),
+      h('ul', {}, availableTabs().filter((id) => id !== 'home').map((id) => h('li', {}, h('a', { href: '#' + id, class: id === 'prize' ? 'tab prize' : 'tab', 'aria-current': state.tab === id ? 'page' : null, text: (data.nav || {})[id] || id })))));
   }
   function renderNotice() {
     const n = $('notice');
@@ -922,16 +1096,18 @@
 
   function show() {
     const key = decodeURIComponent(location.hash.replace(/^#/, ''));
-    const section = key === 'poll' || key === 'lab' ? key : null;
+    const section = { poll: 1, lab: 2, guided: 2, solo: 3 }[key] || null;
     const tab = availableTabs().includes(key) ? key : 'home';
     const first = state.tab === '';
     const changed = tab !== state.tab;
     state.tab = tab;
+    main.dataset.tab = tab;
     if (changed) main.replaceChildren(tab === 'prize' ? renderPrize() : tab === 'ucas' ? renderUcas() : tab === 'teachers' ? renderTeachers() : renderHome());
     renderNav();
     document.title = [tab === 'home' ? '' : (data.nav || {})[tab], data.meta.title].filter(isText).join(' — ');
-    if (section) { requestAnimationFrame(() => scrollToId(section)); return; }
+    if (section && tab === 'home') { requestAnimationFrame(() => goStage(section)); return; }
     if (first) return;
+    if (!changed && tab === 'home') return;
     window.scrollTo(0, 0);
     const h1 = main.querySelector('h1');
     if (h1) h1.focus({ preventScroll: true });
@@ -948,6 +1124,7 @@
       data = await res.json();
       if (!data || typeof data !== 'object') throw new Error(DATA_URL);
       data.meta = data.meta || {};
+      Object.keys(COPY).forEach((k) => { if (data[k]) data[k] = merge(data[k], COPY[k]); });
     } catch (err) {
       data = null;
       fail(err && err.message ? err.message : DATA_URL);

@@ -13,7 +13,7 @@ Practice a university Alzheimer's research project. An interactive site that tak
 | UCAS & careers | `#ucas` | Weak vs strong project sentence, what computational biology is, a founder's note |
 | For teachers | `#teachers` | What the lesson needs, AQA and OCR links, the teacher-pack request, how class codes work |
 
-**The Data Lab** has two modes. *Guided simulations*: five case studies, each in four steps (predict, observe, stress-test confounders, takeaway). *Open sandbox*: three launchpads and a "Show me how … changes across … in …" sentence builder, with a downloadable snapshot card. Every chart is one dot per donor with an optional median and interquartile-range overlay, and every chart exports as a PNG. A switch swaps research terms for A-level terms everywhere.
+**The Data Lab** has two stages. *Guided simulations*: five case studies, each in four steps (predict, observe, stress-test confounders, takeaway). *Solo Explore*: three launchpads and a "Show me how … changes across … in …" sentence builder, with a downloadable snapshot card. Every chart is one dot per donor with an optional median and interquartile-range overlay, and every chart exports as a PNG. A switch swaps research terms for A-level terms everywhere.
 
 ## Everything is in one file
 
