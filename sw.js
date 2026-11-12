@@ -1,6 +1,9 @@
-/* Offline support. Network first, so a new data file always wins when there is a connection;
-   the cached copy is only used when the network is gone. It holds the site's own files and nothing about the visitor. */
-const CACHE = 'alzheimers-explorer-v1';
+/* Offline support. Network first, so a new data file or a replaced image always wins when there is a connection;
+   the cached copy is only used when the network is gone. The page also fetches every image named in the data file
+   once, so a picture you swap in is ready offline without touching this file.
+   Only this site's own files are ever cached: the entry form and every other outside address are left alone,
+   and nothing about the visitor is held. Bump CACHE only if you rename or remove files in the list below. */
+const CACHE = 'alzheimers-explorer-v2';
 const FILES = [
   './',
   'index.html',
@@ -9,6 +12,9 @@ const FILES = [
   'assets/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2',
   'assets/fonts/bricolage-grotesque-latin-wght-normal.woff2',
   'data/seaad-mtg.json',
+  'assets/images/placeholder-tissue.svg',
+  'assets/images/placeholder-umap.svg',
+  'assets/images/placeholder-qr.svg',
 ];
 
 self.addEventListener('install', (event) => {
