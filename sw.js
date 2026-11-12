@@ -1,20 +1,17 @@
-/* Offline support. Network first, so a new data file or a replaced image always wins when there is a connection;
-   the cached copy is only used when the network is gone. The page also fetches every image named in the data file
-   once, so a picture you swap in is ready offline without touching this file.
-   Only this site's own files are ever cached: the entry form and every other outside address are left alone,
-   and nothing about the visitor is held. Bump CACHE only if you rename or remove files in the list below. */
-const CACHE = 'alzheimers-explorer-v2';
+/* Offline support, network first: when there is a connection the newest index.html, styles, script and data
+   are always fetched, so a classroom sees an update straight away. The cached copy is used only when the
+   network is gone. Only this site's own files are ever cached; forms and every other outside address are
+   left alone, and nothing about the visitor is held here. Bump CACHE when files are renamed or removed. */
+const CACHE = 'alzexplore-v3';
 const FILES = [
   './',
   'index.html',
   'assets/app.css',
   'assets/app.js',
-  'assets/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2',
-  'assets/fonts/bricolage-grotesque-latin-wght-normal.woff2',
+  'assets/fonts/instrument-serif-latin-400-normal.woff2',
+  'assets/fonts/instrument-serif-latin-400-italic.woff2',
+  'assets/fonts/plus-jakarta-sans-latin-wght-normal.woff2',
   'data/seaad-mtg.json',
-  'assets/images/placeholder-tissue.svg',
-  'assets/images/placeholder-umap.svg',
-  'assets/images/placeholder-qr.svg',
 ];
 
 self.addEventListener('install', (event) => {
@@ -32,7 +29,7 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   event.respondWith(
-    fetch(req)
+    fetch(req, { cache: 'no-store' })
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();

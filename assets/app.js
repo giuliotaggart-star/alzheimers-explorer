@@ -1,56 +1,38 @@
-/* Alzheimer's Explorer — all behaviour.
-   Every word of subject content, every number, unit, colour and address on screen is read from
-   data/seaad-mtg.json. The only English in this file is page furniture (UI below), and the data
-   file can override that too through its optional "ui" object.
-   Nothing about the visitor is stored: progress lives in memory and is gone on reload. */
+/* AlzExplore — all behaviour. No dependencies, no build step.
+   Every word of subject content, every number, unit, colour and address is read from data/seaad-mtg.json.
+   The only English in this file is page furniture (UI below); the data file's optional "ui" object overrides it.
+   Each view is a plain function from (data, state) to DOM, so it ports to a component framework one function at a time.
+   What is kept on the device: the poll result and the essay draft, in localStorage, and nothing else.
+   What leaves the device: nothing, unless config.pollEndpoint is set, and then only the six poll answers and class code. */
 (() => {
   'use strict';
 
   const DATA_URL = 'data/seaad-mtg.json';
-
-  // Page furniture only. Nothing here says anything about the science.
   const UI = {
-    next: 'Next',
-    back: 'Back',
-    start: 'Start',
-    journey: 'Steps',
-    stepDone: 'done',
-    showAnswer: 'Show me the answer',
-    choose: 'choose',
-    tried: 'tried',
-    copy: 'Copy',
-    copied: 'Copied',
-    copySelected: 'Selected — copy it with your device',
-    newTab: '(opens in a new tab)',
-    unitMissing: '[unit missing]',
+    tabs: 'Sections', newTab: '(opens in a new tab)', unitMissing: '[unit missing]',
+    showAnswer: 'Show me the answer', tried: 'tried', copied: 'Copied', copySelected: 'Selected — copy it with your device',
+    you: 'you', step: 'Step', modelAnswer: 'Show a model answer', nextCase: 'Next simulation',
     loadFailTitle: 'The data did not load',
     loadFailHelp: 'If you opened this page straight from a folder, serve the folder instead: run “python3 -m http.server” in it and open http://localhost:8000.',
   };
-  const ui = (key) => (data && data.ui && data.ui[key]) || UI[key];
+  const ui = (k) => (data && data.ui && data.ui[k]) || UI[k];
 
-  // The two groups are fixed by the data contract's keys; what they are called comes from the data.
-  const GROUPS = [{ key: 'normal', cls: 'a' }, { key: 'dementia', cls: 'b' }];
-  // Used only when a cell type has no colour of its own in the data.
-  const FALLBACK_COLOURS = ['#c8553d', '#0e8a8a', '#b3741a', '#b8479f', '#3f9142', '#4f7cc4', '#8a6d3b', '#5b8c5a'];
-
-  const main = document.getElementById('main');
-  const crumbs = document.getElementById('crumbs');
-  const notice = document.getElementById('notice');
-  const credits = document.getElementById('credits');
+  const $ = (id) => document.getElementById(id);
+  const main = $('main');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-
   let data = null;
-  let routes = new Map();            // hash -> { cell, gene }
-  let current = { kind: '', cell: null, gene: null };
-  const visited = new Set();         // journey steps seen this visit
-  const cloze = new Map();           // passage key -> { done: Map(blank id -> 'right'|'shown'), tried: Map(blank id -> Set), active, last }
-  const mapState = { sorted: false, focus: null };
-  let firstRender = true;
 
-  /* ---------- small helpers ---------- */
+  const state = {
+    tab: '', plain: false, overlay: true, mode: 'guided',
+    caseId: null, step: 0, view: 0, predictions: {}, strat: {},
+    sandbox: null, snapshotMade: false,
+    cloze: new Map(), map: { sorted: false, focus: null },
+    poll: { answers: {}, classCode: '', submitted: null },
+  };
+
+  /* ---------- helpers ---------- */
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
-
   function h(tag, attrs, ...kids) {
     const node = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -66,26 +48,23 @@
     }
     return node;
   }
-
-  function s(tag, attrs) {
+  function s(tag, attrs, text) {
     const node = document.createElementNS(SVG_NS, tag);
-    for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, v);
+    for (const [k, v] of Object.entries(attrs || {})) if (v !== null && v !== undefined) node.setAttribute(k, v);
+    if (text !== undefined) node.textContent = text;
     return node;
   }
-
   const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
   const isText = (v) => typeof v === 'string' && v.trim() !== '';
   const list = (v) => (Array.isArray(v) ? v.filter((x) => x !== null && x !== undefined && x !== '') : []);
-  const slug = (v) => String(v).replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const isUrl = (v) => isText(v) && /^https:\/\//.test(v);
 
-  // Rounds for display, but never rounds a real difference away to zero.
   function num(v, digits = 1) {
     if (!isNum(v)) return '';
     let d = digits;
     while (v !== 0 && d < 6 && Number(v.toFixed(d)) === 0) d += 1;
     return new Intl.NumberFormat('en-GB', { maximumFractionDigits: d }).format(v);
   }
-
   // A number never appears without its unit. If the data gives none, say so on screen.
   function qty(v, unit, digits = 1) {
     const shown = isNum(v) ? num(v, digits) : isText(v) ? v : '';
@@ -93,16 +72,138 @@
     const u = isText(unit) ? unit : ui('unitMissing');
     return shown + (/^[%°]/.test(u) ? '' : ' ') + u;
   }
-  const qv = (obj, digits = 0) => (obj && (isNum(obj.value) || isText(obj.value)) ? qty(obj.value, obj.unit, digits) : '');
-
-  function fmtDate(value) {
-    if (!isText(value)) return '';
-    if (!/^\d{4}-\d{2}-\d{2}/.test(value)) return value;
-    const d = new Date(value);
-    return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const qv = (o, digits = 0) => (o && (isNum(o.value) || isText(o.value)) ? qty(o.value, o.unit, digits) : '');
+  function fmtDate(v) {
+    if (!isText(v) || !/^\d{4}-\d{2}-\d{2}/.test(v)) return isText(v) ? v : '';
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   }
 
-  // A "nice" axis that always starts at zero and is never zoomed to flatter the data.
+  // Device storage, used only for the poll result and the essay draft. Fails quietly where storage is blocked.
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem('alzexplore.' + k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('alzexplore.' + k, JSON.stringify(v)); } catch (e) { /* storage blocked: carry on in memory */ } },
+    del(k) { try { localStorage.removeItem('alzexplore.' + k); } catch (e) { /* nothing to clear */ } },
+  };
+
+  /* ---------- tokens: sentences in the data quote live values ---------- */
+
+  const TOKEN = /\{\{\s*([A-Za-z0-9]+)\s*\}\}/g;
+  function baseVars() {
+    const p = data.prize || {};
+    const m = data.meta || {};
+    return { prizeValue: p.value, wordsMin: p.wordsMin, wordsMax: p.wordsMax, donorTotal: qv(m.donorTotal), cellsTotal: qv(m.cellsTotal), deadline: fmtDate((data.config || {}).essayDeadline) };
+  }
+  const lookup = (name, vars) => {
+    const all = Object.assign(baseVars(), vars || {});
+    const v = all[name];
+    return v === undefined || v === null || v === '' ? undefined : String(v);
+  };
+  function fill(template, vars) {
+    if (!isText(template)) return '';
+    return template.replace(TOKEN, (whole, name) => { const v = lookup(name, vars); return v === undefined ? whole : v; });
+  }
+  function fillNodes(template, vars) {
+    if (!isText(template)) return [];
+    const out = [];
+    let last = 0;
+    template.replace(TOKEN, (whole, name, at) => {
+      if (at > last) out.push(template.slice(last, at));
+      const v = lookup(name, vars);
+      out.push(v === undefined ? h('mark', { class: 'badtoken', text: whole }) : v);
+      last = at + whole.length;
+      return whole;
+    });
+    if (last < template.length) out.push(template.slice(last));
+    return out;
+  }
+  const para = (t, cls, vars) => (isText(t) ? h('p', { class: cls || null }, fillNodes(t, vars)) : null);
+  const paras = (arr, cls, vars) => list(arr).map((t) => para(t, cls, vars));
+  const heading = (level, t, vars, cls) => (isText(t) ? h('h' + level, { class: cls || null }, fillNodes(t, vars)) : null);
+
+  /* ---------- data access ---------- */
+
+  const label = (x) => (x ? (state.plain && isText(x.plainLabel) ? x.plainLabel : x.label) || x.id || '' : '');
+  const byId = (arr, id) => list(arr).find((x) => x && x.id === id) || null;
+  const metricOf = (id) => byId(data.metrics, id);
+  const cellOf = (id) => byId(data.cellTypes, id);
+  const groupingOf = (id) => byId(data.groupings, id);
+  const seriesOf = (metric, cellType) => list(data.series).find((x) => x.metric === metric && x.cellType === cellType && Array.isArray(x.values)) || null;
+  const FALLBACK = ['#c8553d', '#0e8a8a', '#b3741a', '#b8479f', '#3f9142', '#4f7cc4'];
+  const colourOf = (cell) => (cell && /^#[0-9a-fA-F]{6}$/.test(cell.colour || '') ? cell.colour : FALLBACK[Math.max(0, list(data.cellTypes).indexOf(cell)) % FALLBACK.length]);
+  const donorUnit = () => ((data.meta || {}).donorTotal || {}).unit;
+
+  function quantile(sorted, q) {
+    if (!sorted.length) return NaN;
+    const pos = (sorted.length - 1) * q;
+    const lo = Math.floor(pos);
+    const hi = Math.ceil(pos);
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+  }
+  function summary(values) {
+    const v = values.filter(isNum).sort((a, b) => a - b);
+    return { n: v.length, median: quantile(v, 0.5), q1: quantile(v, 0.25), q3: quantile(v, 0.75) };
+  }
+  function stratumOf(donor, conf) {
+    if (!conf) return null;
+    const raw = donor[conf.key];
+    if (Array.isArray(conf.bins)) { const bin = conf.bins.find((b) => !isNum(b.below) || raw < b.below); return bin ? bin.label : null; }
+    return raw === undefined || raw === null ? null : String(raw);
+  }
+  const strataOf = (conf) => {
+    if (!conf) return [];
+    if (Array.isArray(conf.bins)) return conf.bins.map((b) => b.label);
+    return [...new Set(list(data.donors).map((d) => stratumOf(d, conf)).filter((x) => x !== null))].sort();
+  };
+
+  // One question = one metric in one cell type, split across one grouping (optionally filtered and stratified).
+  function buildQuestion(q) {
+    const metric = metricOf(q.metric);
+    const cell = cellOf(q.cellType);
+    const grouping = groupingOf(q.grouping);
+    const ser = seriesOf(q.metric, q.cellType);
+    if (!metric || !grouping || !ser) return null;
+    const conf = q.confounder ? byId(data.confounders, q.confounder) : null;
+    const strata = strataOf(conf);
+    const rows = list(data.donors).map((donor, i) => ({ donor, value: ser.values[i] }))
+      .filter((r) => isNum(r.value) && (!q.filter || list(q.filter.values).includes(r.donor[q.filter.key])));
+    const order = list(grouping.order).length ? grouping.order : [...new Set(rows.map((r) => r.donor[grouping.key]))];
+    const groups = order.map((name) => {
+      const mine = rows.filter((r) => String(r.donor[grouping.key]) === String(name));
+      const parts = conf ? strata.map((st) => { const sub = mine.filter((r) => stratumOf(r.donor, conf) === st); return Object.assign({ stratum: st, rows: sub }, summary(sub.map((r) => r.value))); }) : null;
+      return Object.assign({ name: String(name), rows: mine, parts }, summary(mine.map((r) => r.value)));
+    });
+    const live = groups.filter((g) => g.n > 0);
+    const first = live[0] || null;
+    const last = live[live.length - 1] || null;
+    let trend = 'same';
+    if (first && last && first !== last) {
+      const spread = live.reduce((a, g) => a + (g.q3 - g.q1), 0) / live.length || 1;
+      const diff = last.median - first.median;
+      trend = Math.abs(diff) < 0.5 * spread ? 'same' : diff > 0 ? 'up' : 'down';
+    }
+    const dec = isNum(metric.decimals) ? metric.decimals : 1;
+    return { q, metric, cell, grouping, conf, strata, groups, first, last, trend, dec, unit: metric.unit, max: Math.max(0, ...rows.map((r) => r.value)) };
+  }
+  function questionVars(Q) {
+    if (!Q) return {};
+    return {
+      metricLabel: label(Q.metric), cellLabel: label(Q.cell), groupingLabel: label(Q.grouping), unit: Q.unit || ui('unitMissing'),
+      firstGroup: Q.first && Q.first.name, lastGroup: Q.last && Q.last.name,
+      medianFirst: Q.first && qty(Q.first.median, Q.unit, Q.dec), medianLast: Q.last && qty(Q.last.median, Q.unit, Q.dec),
+      nDonors: qty(Q.groups.reduce((a, g) => a + g.n, 0), donorUnit(), 0),
+      trend: ((data.lab || {}).trendWords || {})[Q.trend] || Q.trend,
+    };
+  }
+
+  /* ---------- the chart: one dot per donor, never a bar ---------- */
+
+  const css = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  function mix(a, b, t) {
+    const p = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16));
+    const [A, B] = [p(a), p(b)];
+    return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('');
+  }
   function niceAxis(maxValue) {
     const max = maxValue > 0 ? maxValue : 1;
     const rough = max / 5;
@@ -113,378 +214,271 @@
     for (let t = 0; t <= top + step / 2; t += step) ticks.push(Number(t.toPrecision(10)));
     return { max: top, ticks };
   }
-
-  const PAD = 3; // % of track width kept clear at each end so dots at the edges are not clipped
-  const xPct = (v, axis) => PAD + (Math.max(0, v) / axis.max) * (100 - 2 * PAD);
-  const unitScale = () => parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;
-
-  /* ---------- data access, tolerant of gaps ---------- */
-
-  const stage = (id) => (data.stages && data.stages[id]) || null;
-  const measure = () => data.measure || {};
-  const dec = () => (isNum(measure().decimals) ? measure().decimals : 1);
-  const geneMeasure = () => data.geneMeasure || {};
-  const geneDec = () => (isNum(geneMeasure().decimals) ? geneMeasure().decimals : 2);
-  const groupName = (key, short) => {
-    const g = (data.groups && data.groups[key]) || {};
-    return (short && g.short) || g.label || g.short || key;
-  };
-  const groupOf = (obj, key) => (obj && obj.values && obj.values[key]) || {};
-  const donorsOf = (g) => (Array.isArray(g.donorValues) ? g.donorValues.filter(isNum) : []);
-  const hasDonors = (cell) => GROUPS.some((g) => donorsOf(groupOf(cell, g.key)).length > 0);
-  const diffOf = (cell) => {
-    const e = cell.effect || {};
-    if (isNum(e.difference)) return e.difference;
-    const a = groupOf(cell, 'normal').mean;
-    const b = groupOf(cell, 'dementia').mean;
-    return isNum(a) && isNum(b) ? b - a : 0;
-  };
-  const colourOf = (cell) => {
-    if (cell && /^#[0-9a-fA-F]{3,8}$/.test(cell.colour || '')) return cell.colour;
-    const i = Math.max(0, data.cellTypes.indexOf(cell));
-    return FALLBACK_COLOURS[i % FALLBACK_COLOURS.length];
-  };
-  const genesOf = (cell) => list(cell && cell.topGenes).filter((g) => g && g.symbol);
-
-  function extentOf(item) {
-    let max = 0;
-    for (const g of GROUPS) {
-      const v = groupOf(item, g.key);
-      for (const d of donorsOf(v)) max = Math.max(max, d);
-      if (isNum(v.mean)) max = Math.max(max, v.mean + (isNum(v.sd) ? v.sd : 0));
-    }
-    return max;
+  function marker(shape, x, y, r, attrs) {
+    if (shape === 1) return s('rect', Object.assign({ x: x - r * 0.9, y: y - r * 0.9, width: r * 1.8, height: r * 1.8 }, attrs));
+    if (shape === 2) return s('path', Object.assign({ d: `M${x} ${y - r * 1.2}L${x + r * 1.1} ${y + r * 0.8}L${x - r * 1.1} ${y + r * 0.8}Z` }, attrs));
+    return s('circle', Object.assign({ cx: x, cy: y, r }, attrs));
   }
 
-  function geneRatio(gene) {
-    const a = groupOf(gene, 'normal').mean;
-    const b = groupOf(gene, 'dementia').mean;
-    if (!isNum(a) || !isNum(b) || a <= 0) return null;
-    const r = b / a;
-    const hit = list(geneMeasure().ratioWords).find((w) => !isNum(w.below) || r < w.below);
-    if (!hit || !isText(hit.text)) return null;
-    return { same: !!hit.same, text: hit.text.replace(/\{\{\s*ratio\s*\}\}/g, num(Math.round(r), 0)) };
-  }
-
-  /* ---------- tokens: sentences in the data can quote live values, so text and chart cannot drift ---------- */
-
-  function tokenValue(name, c) {
-    const m = measure();
-    const meta = data.meta || {};
-    const cell = c.cell;
-    const gene = c.gene;
-    const e = (cell && cell.effect) || {};
-    const a = groupOf(cell, 'normal');
-    const b = groupOf(cell, 'dementia');
-    const out = (v) => (v === '' || v === null || v === undefined ? undefined : String(v));
-    if (c.extra && Object.prototype.hasOwnProperty.call(c.extra, name)) return out(c.extra[name]);
-    switch (name) {
-      case 'cellLabel': return out(cell && cell.label);
-      case 'cellLabelLower': return out(cell && isText(cell.label) ? cell.label.toLowerCase() : '');
-      case 'measureLabel': return out(m.label);
-      case 'unit': return out(m.unit);
-      case 'higherMeans': return out(m.higherMeans);
-      case 'difference': return out(num(e.difference, dec()));
-      case 'differenceWithUnit': return out(qty(e.difference, e.unit || m.unit, dec()));
-      case 'direction': return out(((data.cellScreen || {}).directionWords || {})[e.direction] || e.direction);
-      case 'cohensD': return out(num(e.cohensD, 2));
-      case 'effectSize': return out(e.plainSize);
-      case 'meanNormal': return out(qty(a.mean, m.unit, dec()));
-      case 'meanDementia': return out(qty(b.mean, m.unit, dec()));
-      case 'nNormal': return out(qty(a.n, a.nUnit, 0));
-      case 'nDementia': return out(qty(b.n, b.nUnit, 0));
-      case 'nTotal': return out(isNum(a.n) && isNum(b.n) ? qty(a.n + b.n, a.nUnit || b.nUnit, 0) : '');
-      case 'nUnit': return out(a.nUnit || b.nUnit);
-      case 'genesChanged': return out(qv(cell && cell.genesChanged));
-      case 'region': return out(meta.region);
-      case 'regionPlain': return out(meta.regionPlain);
-      case 'donorTotal': return out(qv(meta.donorTotal));
-      case 'cellsTotal': return out(qv(meta.cellsTotal));
-      case 'groupNormal': return out(groupName('normal'));
-      case 'groupDementia': return out(groupName('dementia'));
-      case 'groupNormalShort': return out(groupName('normal', true));
-      case 'groupDementiaShort': return out(groupName('dementia', true));
-      case 'geneSymbol': return out(gene && gene.symbol);
-      case 'geneChange': { const r = gene && geneRatio(gene); return out(r && r.text); }
-      case 'geneMeasureLabel': return out(geneMeasure().label);
-      case 'geneUnit': return out((gene && gene.unit) || geneMeasure().unit || ui('unitMissing'));
-      case 'wordLimit': return out(isNum((data.challenge || {}).wordLimit) ? (data.challenge || {}).wordLimit : '');
-      case 'deadline': return out(fmtDate((data.config || {}).entryDeadline));
-      default: return undefined;
-    }
-  }
-
-  const TOKEN = /\{\{\s*([A-Za-z0-9]+)\s*\}\}/g;
-  const ctx = (cell, gene, extra) => ({ cell: cell || null, gene: gene || null, extra: extra || null });
-
-  // As plain text. A token that cannot be resolved is left exactly as written.
-  function fill(template, c) {
-    if (!isText(template)) return '';
-    return template.replace(TOKEN, (whole, name) => { const v = tokenValue(name, c || ctx()); return v === undefined ? whole : v; });
-  }
-
-  // As DOM nodes. A token that cannot be resolved is left as written and visibly marked, so a typo cannot hide.
-  function fillNodes(template, c, strong) {
-    if (!isText(template)) return [];
-    const nodes = [];
-    let last = 0;
-    template.replace(TOKEN, (whole, name, at) => {
-      if (at > last) nodes.push(template.slice(last, at));
-      const v = tokenValue(name, c || ctx());
-      if (v === undefined) nodes.push(h('mark', { class: 'badtoken', text: whole }));
-      else if (strong && strong[name]) nodes.push(h('b', { class: strong[name], text: v }));
-      else nodes.push(v);
-      last = at + whole.length;
-      return whole;
-    });
-    if (last < template.length) nodes.push(template.slice(last));
-    return nodes;
-  }
-
-  const para = (template, cls, c, strong) => (isText(template) ? h('p', { class: cls || null }, fillNodes(template, c, strong)) : null);
-  const paras = (arr, cls, c) => list(arr).map((t) => para(t, cls, c));
-
-  /* ---------- the journey: which screens exist, and their order ---------- */
-
-  function sharedPassage() { const w = data.writeUp || {}; return w.shared && list(w.shared.parts).length ? w.shared : null; }
-  function passageFor(cell) {
-    const own = cell && cell.writeUp && list(cell.writeUp.parts).length ? cell.writeUp : null;
-    return own || sharedPassage();
-  }
-  function headlineCell() {
-    const id = (data.writeUp || {}).headlineCell;
-    return data.cellTypes.find((c) => c.id === id) || [...data.cellTypes].sort((p, q) => Math.abs(diffOf(q)) - Math.abs(diffOf(p)))[0];
-  }
-  const hasWriteUp = () => !!sharedPassage() || data.cellTypes.some((c) => passageFor(c));
-
-  function steps() {
-    const out = [];
-    if (stage('data')) out.push({ id: 'data', route: 'data', label: stage('data').navLabel || stage('data').heading });
-    if (stage('mapping')) out.push({ id: 'mapping', route: 'mapping', label: stage('mapping').navLabel || stage('mapping').heading });
-    const an = stage('analysis') || {};
-    out.push({ id: 'analysis', route: 'top', label: an.navLabel || an.heading || (data.meta || {}).title });
-    if (hasWriteUp()) out.push({ id: 'writeup', route: 'writeup', label: (data.writeUp || {}).navLabel || (data.writeUp || {}).heading });
-    return out;
-  }
-  const stepAfter = (id) => { const all = steps(); const i = all.findIndex((x) => x.id === id); return i >= 0 ? all[i + 1] || null : null; };
-  const stepBefore = (id) => { const all = steps(); const i = all.findIndex((x) => x.id === id); return i > 0 ? all[i - 1] : null; };
-  const stepOf = (kind) => (kind === 'cell' || kind === 'gene' ? 'analysis' : kind);
-
-  const button = (href, label, cls) => (isText(label) ? h('a', { class: 'btn' + (cls ? ' ' + cls : ''), href: '#' + href }, h('span', { text: label }), h('span', { class: 'arrow', 'aria-hidden': 'true', text: '→' })) : null);
-  const backLink = (href, label) => h('a', { class: 'backlink', href: '#' + href }, h('span', { 'aria-hidden': 'true', text: '← ' }), label || ui('back'));
-  const swatch = (cell) => h('span', { class: 'dot', style: `background:${colourOf(cell)}`, 'aria-hidden': 'true' });
-
-  function nextButton(id, label) {
-    const next = stepAfter(id);
-    return next ? button(next.route, label || `${ui('next')}: ${next.label}`) : null;
-  }
-  function backToStep(id) {
-    const prev = stepBefore(id);
-    if (prev) return backLink(prev.route, prev.label);
-    return data.intro ? backLink('start', (data.meta || {}).shortTitle || ui('back')) : null;
-  }
-
-  /* ---------- shared pieces ---------- */
-
-  function figureCards(items) {
-    const cards = list(items).filter((f) => f && (isNum(f.value) || isText(f.value)));
-    if (!cards.length) return null;
-    return h('ul', { class: 'figures' }, cards.map((f) => h('li', { class: 'figure-card' },
-      h('span', { class: 'fvalue', text: isNum(f.value) ? num(f.value, isNum(f.decimals) ? f.decimals : 0) : f.value }),
-      h('span', { class: 'funit', text: isText(f.unit) ? f.unit : ui('unitMissing') }),
-      isText(f.label) && h('span', { class: 'flabel', text: f.label }),
-      isText(f.note) && h('span', { class: 'fnote', text: f.note }))));
-  }
-
-  function picture(img, cls) {
-    if (!img || !isText(img.src)) return null;
-    return h('figure', { class: 'picture' + (cls ? ' ' + cls : '') },
-      h('img', { src: img.src, alt: img.alt || '', loading: 'lazy', decoding: 'async' }),
-      isText(img.caption) && h('figcaption', { class: 'small', text: img.caption }));
-  }
-
-  /* ---------- the dumbbell: used on every screen so the picture never changes ---------- */
-
-  function buildTrack(item, axis, size) {
-    const u = unitScale();
-    const big = size === 'big';
-    const H = (big ? 150 : 66) * u;
-    const mid = H / 2;
-    const meanR = (big ? 12 : 8) * u;
-    const lane = (big ? 46 : 20) * u;       // height of each donor lane
-    const gap = (big ? 18 : 10) * u;        // clear space between the centre line and a lane
-    const svg = s('svg', { height: H, role: 'img', 'aria-hidden': 'true', focusable: 'false' });
-
+  // Draws with literal attributes (no stylesheet), so the same SVG can be exported as a picture.
+  function drawChart(Q, width) {
+    const lab = data.lab || {};
+    const W = Math.max(280, Math.round(width));
+    const narrow = W < 520;
+    const H = narrow ? 320 : 400;
+    const font = narrow ? 11 : 13;
+    const m = { l: narrow ? 40 : 52, r: 12, t: 30, b: narrow ? 54 : 58 };
+    const ink = css('--ink', '#0F172A');
+    const soft = css('--body', '#334155');
+    const grid = css('--rule', '#E5E0F5');
+    const teal = css('--teal', '#0D9488');
+    const crimson = css('--crimson', '#BE123C');
+    const axis = niceAxis(Q.max * 1.05);
+    const Y = (v) => m.t + (1 - v / axis.max) * (H - m.t - m.b);
+    const band = (W - m.l - m.r) / Math.max(1, Q.groups.length);
+    const family = '"Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Arial, sans-serif';
+    const svg = s('svg', { xmlns: SVG_NS, viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'font-family': family, 'font-size': font,
+      'aria-label': [label(Q.metric), label(Q.cell), label(Q.grouping)].filter(Boolean).join(', ') });
+    svg.append(s('rect', { width: W, height: H, fill: '#FFFFFF' }));
+    svg.append(s('text', { x: 4, y: 14, fill: soft, 'font-weight': 600 }, `${label(Q.metric)} (${Q.unit || ui('unitMissing')})`));
     axis.ticks.forEach((t) => {
-      const x = xPct(t, axis) + '%';
-      svg.append(s('line', { class: t === 0 ? 'grid-line zero' : 'grid-line', x1: x, x2: x, y1: 0, y2: H }));
+      svg.append(s('line', { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: t === 0 ? soft : grid, 'stroke-width': t === 0 ? 1.5 : 1 }));
+      svg.append(s('text', { x: m.l - 6, y: Y(t) + font * 0.35, 'text-anchor': 'end', fill: soft }, num(t, 2)));
     });
-
-    GROUPS.forEach((g, gi) => {
-      const v = groupOf(item, g.key);
-      const donors = donorsOf(v);
-      const dir = gi === 0 ? -1 : 1;        // group A sits above the centre line, group B below
-      if (donors.length) {
-        const many = donors.length > 400;
-        const r = (big ? 4.5 : 2.8) * u * (many ? 0.6 : 1);
-        const opacity = many ? 0.25 : donors.length > 120 ? 0.45 : 0.7;
-        donors.forEach((d, i) => {
-          const jitter = (i * 0.61803398875) % 1;   // deterministic, so the picture is stable between visits
-          svg.append(s('circle', {
-            class: 'donor ' + g.cls, r, 'fill-opacity': opacity,
-            cx: xPct(d, axis) + '%', cy: mid + dir * (gap + jitter * lane),
-          }));
+    const r = narrow ? 3.4 : 4.4;
+    Q.groups.forEach((g, gi) => {
+      const x0 = m.l + gi * band;
+      const colour = Q.groups.length > 1 ? mix(teal, crimson, gi / (Q.groups.length - 1)) : teal;
+      const lanes = g.parts || [Object.assign({ stratum: null }, g)];
+      const laneW = (band * 0.84) / lanes.length;
+      lanes.forEach((lane, li) => {
+        const cx = x0 + band * 0.08 + laneW * (li + 0.5);
+        const half = Math.min(laneW * 0.36, 34);
+        if (state.overlay && lane.n > 0) {
+          svg.append(s('rect', { x: cx - half - 3, width: 2 * half + 6, y: Y(lane.q3), height: Math.max(1, Y(lane.q1) - Y(lane.q3)), fill: ink, 'fill-opacity': 0.07, stroke: ink, 'stroke-opacity': 0.45, 'stroke-width': 1, rx: 3 }));
+        }
+        lane.rows.forEach((row, i) => {
+          const jitter = ((i * 0.61803398875) % 1) * 2 - 1;
+          const dot = marker(li % 3, cx + jitter * half, Y(row.value), r, { fill: colour, 'fill-opacity': 0.78, stroke: '#ffffff', 'stroke-width': 0.8 });
+          const tip = fill(lab.donorTitle, { donorId: row.donor.id, value: qty(row.value, Q.unit, Q.dec + 1), age: row.donor.age, sex: row.donor.sex });
+          if (tip) dot.append(s('title', {}, tip));
+          svg.append(dot);
         });
-      } else if (isNum(v.mean) && isNum(v.sd)) {
-        const y = mid + dir * (gap + lane / 2);
-        const cap = 5 * u;
-        const x1 = xPct(v.mean - v.sd, axis) + '%';
-        const x2 = xPct(v.mean + v.sd, axis) + '%';
-        const xm = xPct(v.mean, axis) + '%';
-        svg.append(s('line', { class: 'whisker ' + g.cls, x1, x2, y1: y, y2: y, 'stroke-width': 2.5 * u }));
-        svg.append(s('line', { class: 'whisker ' + g.cls, x1, x2: x1, y1: y - cap, y2: y + cap, 'stroke-width': 2.5 * u }));
-        svg.append(s('line', { class: 'whisker ' + g.cls, x1: x2, x2, y1: y - cap, y2: y + cap, 'stroke-width': 2.5 * u }));
-        svg.append(s('line', { class: 'whisker ' + g.cls, x1: xm, x2: xm, y1: mid, y2: y, 'stroke-width': 1.5 * u }));
-      }
+        if (state.overlay && lane.n > 0) svg.append(s('line', { x1: cx - half - 5, x2: cx + half + 5, y1: Y(lane.median), y2: Y(lane.median), stroke: ink, 'stroke-width': 3, 'stroke-linecap': 'round' }));
+      });
+      svg.append(s('text', { x: x0 + band / 2, y: H - m.b + font + 6, 'text-anchor': 'middle', fill: ink, 'font-weight': 700 }, g.name));
+      svg.append(s('text', { x: x0 + band / 2, y: H - m.b + 2 * font + 10, 'text-anchor': 'middle', fill: soft }, fill(lab.nLabel, { n: g.n }) || String(g.n)));
     });
-
-    const a = groupOf(item, 'normal').mean;
-    const b = groupOf(item, 'dementia').mean;
-    if (isNum(a) && isNum(b)) {
-      svg.append(s('line', { class: 'link', x1: xPct(a, axis) + '%', x2: xPct(b, axis) + '%', y1: mid, y2: mid, 'stroke-width': (big ? 5 : 3.5) * u }));
-    }
-    GROUPS.forEach((g) => {
-      const m = groupOf(item, g.key).mean;
-      if (!isNum(m)) return;
-      svg.append(s('circle', { class: 'mean ' + g.cls, cx: xPct(m, axis) + '%', cy: mid, r: meanR, 'stroke-width': (g.cls === 'a' ? 3.5 : 2) * u }));
-    });
+    svg.append(s('text', { x: m.l + (W - m.l - m.r) / 2, y: H - 6, 'text-anchor': 'middle', fill: soft, 'font-weight': 600 }, label(Q.grouping)));
     return svg;
   }
 
-  function buildTicks(axis, unit) {
-    const ticks = h('div', { class: 'ticks', 'aria-hidden': 'true' });
-    axis.ticks.forEach((t, i) => {
-      const label = i === axis.ticks.length - 1 && unit && /^[%°]/.test(unit) ? num(t, 2) + unit.charAt(0) : num(t, 2);
-      ticks.append(h('span', { style: `left:${xPct(t, axis)}%`, text: label }));
+  function strataLegend(Q) {
+    if (!Q.conf) return null;
+    return h('p', { class: 'legend' }, h('b', { text: Q.conf.label + ': ' }), Q.strata.map((st, i) => {
+      const svg = s('svg', { viewBox: '0 0 16 16', width: 14, height: 14, 'aria-hidden': 'true' });
+      svg.append(marker(i % 3, 8, 8, 5, { fill: css('--body', '#334155') }));
+      return h('span', {}, svg, st);
+    }));
+  }
+
+  function statsTable(Q) {
+    const cols = (data.lab || {}).tableColumns || {};
+    const unit = Q.unit || ui('unitMissing');
+    const rows = [];
+    Q.groups.forEach((g) => {
+      const lanes = g.parts ? g.parts.map((p) => Object.assign({ title: `${g.name} · ${p.stratum}` }, p)) : [Object.assign({ title: g.name }, g)];
+      lanes.forEach((x) => rows.push(h('tr', {},
+        h('th', { scope: 'row', text: x.title }),
+        h('td', { class: 'num', text: String(x.n) }),
+        h('td', { class: 'num', text: x.n ? num(x.median, Q.dec + 1) : '–' }),
+        h('td', { class: 'num', text: x.n ? `${num(x.q1, Q.dec + 1)} to ${num(x.q3, Q.dec + 1)}` : '–' }))));
     });
-    return ticks;
+    return h('div', { class: 'tablewrap' }, h('table', {},
+      h('thead', {}, h('tr', {},
+        h('th', { scope: 'col', text: [cols.group, label(Q.grouping)].filter(isText).join(': ') }),
+        h('th', { scope: 'col', class: 'num', text: cols.n || donorUnit() || ui('unitMissing') }),
+        h('th', { scope: 'col', class: 'num', text: `${cols.median || ''} (${unit})`.trim() }),
+        h('th', { scope: 'col', class: 'num', text: `${cols.iqr || ''} (${unit})`.trim() }))),
+      h('tbody', {}, rows)));
   }
 
-  function legend() {
-    return h('p', { class: 'legend' },
-      GROUPS.map((g) => h('span', {}, h('span', { class: 'swatch ' + g.cls, 'aria-hidden': 'true' }), groupName(g.key))));
+  /* ---------- pictures out: chart PNG and the snapshot card ---------- */
+
+  function saveBlob(blob, name) {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = h('a', { href: url, download: name });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+  function svgImage(svg) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
+    });
+  }
+  function wrapText(g, text, x, y, maxWidth, lineHeight) {
+    let line = '';
+    let yy = y;
+    for (const word of String(text).split(/\s+/)) {
+      const next = line ? line + ' ' + word : word;
+      if (g.measureText(next).width > maxWidth && line) { g.fillText(line, x, yy); line = word; yy += lineHeight; } else line = next;
+    }
+    if (line) g.fillText(line, x, yy);
+    return yy + lineHeight;
+  }
+  const questionText = (Q) => fill((data.lab || {}).snapshotQuestion, questionVars(Q)) || [label(Q.metric), label(Q.cell), label(Q.grouping)].filter(Boolean).join(' · ');
+  const sourceLine = () => [data.meta.source, data.meta.dataset, data.meta.citation].filter(isText).join(' · ');
+
+  async function composeCard(Q, withStats) {
+    const lab = data.lab || {};
+    const img = await svgImage(drawChart(Q, 1040));
+    const pad = 40;
+    const Wc = 1120;
+    const Hc = pad + (withStats ? 60 : 0) + 96 + img.height + (withStats ? 50 + (Q.groups.length + 1) * 30 : 0) + 110;
+    const canvas = h('canvas', { width: Wc * 2, height: Hc * 2 });
+    const g = canvas.getContext('2d');
+    g.scale(2, 2);
+    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, Wc, Hc);
+    const ink = css('--ink', '#0F172A');
+    const soft = css('--body', '#334155');
+    const sans = '"Plus Jakarta Sans", system-ui, Arial, sans-serif';
+    let y = pad;
+    if (withStats) {
+      g.fillStyle = css('--plum', '#4C1D95'); g.font = `700 15px ${sans}`;
+      g.fillText([data.meta.title, lab.snapshotTitle].filter(isText).join(' · ').toUpperCase(), pad, y + 12); y += 60;
+    }
+    g.fillStyle = ink; g.font = `600 24px ${sans}`;
+    y = wrapText(g, questionText(Q), pad, y + 20, Wc - 2 * pad, 30) + 6;
+    if (Q.q.filter && isText(Q.q.filter.note)) { g.fillStyle = soft; g.font = `400 15px ${sans}`; g.fillText(Q.q.filter.note, pad, y); y += 22; }
+    g.drawImage(img, pad, y); y += img.height + 16;
+    if (withStats) {
+      const cols = lab.tableColumns || {};
+      const unit = Q.unit || ui('unitMissing');
+      const xs = [pad, pad + 360, pad + 480, pad + 720];
+      g.font = `700 14px ${sans}`; g.fillStyle = ink;
+      [label(Q.grouping), cols.n || donorUnit() || '', `${cols.median || ''} (${unit})`, `${cols.iqr || ''} (${unit})`].forEach((t, i) => g.fillText(t, xs[i], y + 14));
+      y += 30; g.font = `400 14px ${sans}`;
+      Q.groups.forEach((gr) => {
+        [gr.name, String(gr.n), gr.n ? num(gr.median, Q.dec + 1) : '–', gr.n ? `${num(gr.q1, Q.dec + 1)} to ${num(gr.q3, Q.dec + 1)}` : '–'].forEach((t, i) => g.fillText(t, xs[i], y + 14));
+        y += 30;
+      });
+      y += 10;
+    }
+    g.fillStyle = soft; g.font = `400 13px ${sans}`;
+    y = wrapText(g, [lab.dotNote, sourceLine()].filter(isText).join(' '), pad, y + 16, Wc - 2 * pad, 18);
+    if (data.meta.PLACEHOLDER) { g.fillStyle = css('--crimson', '#BE123C'); g.font = `700 13px ${sans}`; wrapText(g, data.meta.placeholderNotice || 'PLACEHOLDER', pad, y + 4, Wc - 2 * pad, 18); }
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  }
+  const fileStem = (Q) => ['alzexplore', Q.q.metric, Q.q.cellType, Q.q.grouping].filter(Boolean).join('-').toLowerCase().replace(/[^a-z0-9-]+/g, '-');
+
+  /* ---------- reusable blocks ---------- */
+
+  function chartBlock(Q) {
+    const lab = data.lab || {};
+    const holder = h('div', { class: 'chart' });
+    const paint = () => holder.replaceChildren(drawChart(Q, holder.clientWidth || main.clientWidth - 32));
+    requestAnimationFrame(paint);
+    if ('ResizeObserver' in window) {
+      let lastW = 0;
+      new ResizeObserver(() => { const w = holder.clientWidth; if (holder.isConnected && w && Math.abs(w - lastW) > 8) { lastW = w; paint(); } }).observe(holder);
+    }
+    return h('figure', { class: 'plot' },
+      h('figcaption', { class: 'plot-title' }, questionText(Q)),
+      Q.q.filter && para(Q.q.filter.note, 'small'),
+      holder,
+      strataLegend(Q),
+      para(lab.dotNote, 'small'),
+      h('div', { class: 'plot-tools' },
+        isText(lab.exportLabel) && h('button', { type: 'button', class: 'btn ghost', 'data-k': 'export', onclick: async () => { try { saveBlob(await composeCard(Q, false), fileStem(Q) + '.png'); } catch (e) { /* the picture could not be made on this device */ } } }, lab.exportLabel)),
+      isText(lab.tableLabel) && h('details', { class: 'drawer slim' }, h('summary', { text: lab.tableLabel }), statsTable(Q)));
   }
 
-  const axisTitle = () => [measure().label, measure().unit || ui('unitMissing')].filter(Boolean).join(' — ');
-  const sharedAxis = () => niceAxis(Math.max(...data.cellTypes.map(extentOf)));
-  const sortedCells = () => [...data.cellTypes].sort((p, q) => Math.abs(diffOf(q)) - Math.abs(diffOf(p)));
-
-  // The enlarged chart for one cell type: same axis as the full chart, so it reads as a zoom.
-  function cellFigure(cell, heading) {
-    const cs = data.cellScreen || {};
-    const axis = sharedAxis();
-    const track = h('div', { class: 'track' }, buildTrack(cell, axis, 'big'));
-    const caption = fill(hasDonors(cell) ? cs.figCaptionDonors || cs.figCaption : cs.figCaption, ctx(cell)) || axisTitle();
-    const fig = h('figure', { class: 'hero' },
-      heading && h('p', { class: 'figtitle' }, swatch(cell), heading),
-      legend(),
-      h('div', { class: 'axis' }, buildTicks(axis, measure().unit)),
-      track,
-      h('figcaption', { class: 'small', text: caption }));
-    return { fig, track };
+  // A passage with gaps: choose the right words. Every gap has "Show me the answer"; nothing is locked.
+  function clozeBlock(key, passage, vars) {
+    const parts = list(passage.parts).filter((p) => p && (p.type === 'text' || p.type === 'break' || (p.type === 'blank' && list(p.options).length >= 2)));
+    const blanks = parts.filter((p) => p.type === 'blank');
+    if (!state.cloze.has(key)) state.cloze.set(key, { done: new Map(), tried: new Map(), active: null, last: null });
+    const st = state.cloze.get(key);
+    const box = h('div', { class: 'cloze' });
+    const idOf = (b) => blanks.indexOf(b);
+    const opt = (b, i) => fill(String(b.options[i]), vars);
+    const paint = (focus) => {
+      const open = blanks.filter((b) => !st.done.has(idOf(b)));
+      if (!open.some((b) => idOf(b) === st.active)) st.active = open.length ? idOf(open[0]) : null;
+      const active = blanks.find((b) => idOf(b) === st.active) || null;
+      const text = h('div', { class: 'passage' });
+      let line = h('p', {});
+      text.append(line);
+      for (const p of parts) {
+        if (p.type === 'break') { line = h('p', {}); text.append(line); continue; }
+        if (p.type === 'text') { line.append(...fillNodes(p.text, vars)); continue; }
+        const n = idOf(p) + 1;
+        if (st.done.has(idOf(p))) line.append(h('span', { class: 'gap filled' + (st.done.get(idOf(p)) === 'shown' ? ' shown' : ''), text: opt(p, p.correct) }));
+        else {
+          const longest = Math.min(24, Math.max(...p.options.map((_, i) => opt(p, i).length)));
+          line.append(h('button', { type: 'button', class: 'gap' + (idOf(p) === st.active ? ' active' : ''), style: `min-width:min(${longest * 0.6 + 2}em,100%)`, 'aria-label': `${n} / ${blanks.length}`, onclick: () => { st.active = idOf(p); st.last = null; paint('option'); } }, h('span', { class: 'gapnum', 'aria-hidden': 'true', text: String(n) })));
+        }
+      }
+      const status = h('p', { class: 'feedback', role: 'status', 'aria-live': 'polite' }, st.last && h('span', { class: st.last.good ? 'good' : '', text: st.last.text }));
+      let chooser = null;
+      if (active) {
+        const tried = st.tried.get(idOf(active)) || new Set();
+        const finish = (how) => { st.done.set(idOf(active), how); st.last = { good: true, text: ['“' + opt(active, active.correct) + '”', (active.feedback || {}).right].filter(isText).join(' ') }; paint(open.length > 1 ? 'option' : 'done'); };
+        const options = active.options.map((_, i) => h('button', { type: 'button', role: 'radio', 'aria-checked': 'false', tabindex: i === 0 ? '0' : '-1', class: 'option' + (tried.has(i) ? ' tried' : ''),
+          onclick: () => { if (i === active.correct) { finish('right'); return; } tried.add(i); st.tried.set(idOf(active), tried); st.last = { good: false, text: (active.feedback || {}).wrong || '' }; paint('option:' + i); } },
+          opt(active, i), tried.has(i) && h('span', { class: 'small', text: ` — ${ui('tried')}` })));
+        chooser = h('div', { class: 'chooser' },
+          h('div', { class: 'options', role: 'radiogroup', 'aria-label': `${idOf(active) + 1} / ${blanks.length}`,
+            onkeydown: (ev) => { const move = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[ev.key]; if (!move) return; ev.preventDefault(); const to = options[(options.indexOf(document.activeElement) + move + options.length) % options.length]; options.forEach((o) => o.setAttribute('tabindex', o === to ? '0' : '-1')); to.focus(); } },
+            options),
+          h('button', { type: 'button', class: 'linkbtn', text: ui('showAnswer'), onclick: () => finish('shown') }));
+      }
+      box.replaceChildren(...[text, status, chooser].filter(Boolean));
+      if (!focus) return;
+      const target = focus === 'done' ? status : focus.startsWith('option:') ? box.querySelectorAll('.option')[Number(focus.slice(7))] : box.querySelector('.option');
+      if (!target) return;
+      if (focus === 'done') target.setAttribute('tabindex', '-1');
+      else box.querySelectorAll('.option').forEach((o) => o.setAttribute('tabindex', o === target ? '0' : '-1'));
+      target.focus({ preventScroll: true });
+    };
+    paint(null);
+    return box;
   }
 
-  /* ---------- opening screen ---------- */
-
-  function renderStart() {
-    const intro = data.intro || {};
-    const all = steps();
-    const first = all[0];
-    return h('section', { class: 'view start' },
-      h('div', { class: 'start-head' },
-        h('h1', { tabindex: '-1', text: intro.heading || (data.meta || {}).title || '' }),
-        para(intro.pitch, 'lede')),
-      h('div', { class: 'block' },
-        isText(intro.stepsHeading) && h('h2', { class: 'kicker', text: intro.stepsHeading }),
-        h('ol', { class: 'path' }, all.map((st, i) => h('li', {},
-          h('a', { href: '#' + st.route },
-            h('span', { class: 'n', 'aria-hidden': 'true', text: String(i + 1) }),
-            h('span', { class: 'plabel', text: st.label }),
-            isText((intro.steps || {})[st.id]) && h('span', { class: 'ptext', text: intro.steps[st.id] })))))),
-      h('div', { class: 'start-go' },
-        first && button(first.route, intro.startLabel || ui('start'), 'big'),
-        para(intro.timeNote, 'small')));
-  }
-
-  /* ---------- stage 1: data ---------- */
-
-  function renderData() {
-    const st = stage('data');
-    return h('section', { class: 'view' },
-      backToStep('data'),
-      h('div', { class: 'prose' },
-        h('h1', { tabindex: '-1', text: st.heading || st.navLabel || '' }),
-        paras(st.body, 'lede')),
-      figureCards(st.figures),
-      picture(st.image, 'wide'),
-      h('div', { class: 'actions' }, nextButton('data', st.nextLabel)));
-  }
-
-  /* ---------- stage 2: mapping — the site draws the map itself and sorts it in front of the student ---------- */
-
-  function mapPoints() {
+  // The map of cells the site draws itself: a grey jumble that sorts into coloured types.
+  function mapBlock() {
+    const lab = data.lab || {};
     const src = (data.map && data.map.points) || null;
     if (!src || typeof src !== 'object') return null;
     const groups = [];
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, count = 0;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const [id, pts] of Object.entries(src)) {
       const clean = list(pts).filter((p) => Array.isArray(p) && isNum(p[0]) && isNum(p[1]));
       if (!clean.length) continue;
-      for (const p of clean) { minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]); minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]); }
-      groups.push({ id, cell: data.cellTypes.find((c) => c.id === id) || null, pts: clean });
-      count += clean.length;
+      clean.forEach((p) => { minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]); minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]); });
+      groups.push({ id, cell: cellOf(id), pts: clean });
     }
-    if (!count) return null;
-    const spanX = maxX - minX || 1;
-    const spanY = maxY - minY || 1;
-    const M = 0.07;                         // margin, as a share of the canvas
+    if (!groups.length) return null;
     let seed = 20261112;
     const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-    for (const g of groups) {
-      let sx = 0, sy = 0;
-      g.sorted = g.pts.map((p) => {
-        const x = M + ((p[0] - minX) / spanX) * (1 - 2 * M);
-        const y = 1 - (M + ((p[1] - minY) / spanY) * (1 - 2 * M));   // up is up
-        sx += x; sy += y;
-        return [x, y];
-      });
-      g.centre = [sx / g.pts.length, sy / g.pts.length];
-      g.mixed = g.pts.map(() => {            // a jumble: everything in one round heap
-        const r = 0.4 * Math.sqrt(rand());
-        const t = rand() * Math.PI * 2;
-        return [0.5 + r * Math.cos(t), 0.5 + r * Math.sin(t)];
-      });
+    const M = 0.07;
+    groups.forEach((g) => {
+      g.sorted = g.pts.map((p) => [M + ((p[0] - minX) / (maxX - minX || 1)) * (1 - 2 * M), 1 - (M + ((p[1] - minY) / (maxY - minY || 1)) * (1 - 2 * M))]);
+      g.mixed = g.pts.map(() => { const r = 0.4 * Math.sqrt(rand()); const t = rand() * Math.PI * 2; return [0.5 + r * Math.cos(t), 0.5 + r * Math.sin(t)]; });
       g.delay = g.pts.map(() => rand() * 0.35);
-    }
-    return groups;
-  }
-
-  function mapFigure(st) {
-    const groups = mapPoints();
-    if (!groups) return { node: picture(st.image), setFocus: null };
-
-    const canvas = h('canvas', { role: 'img', 'aria-label': st.mapAlt || (st.image || {}).alt || '' });
-    const labels = h('div', { class: 'maplabels', 'aria-hidden': 'true' },
-      groups.filter((g) => g.cell).map((g) => h('span', { style: `left:${g.centre[0] * 100}%;top:${g.centre[1] * 100}%`, text: g.cell.label })));
-    const frame = h('div', { class: 'mapframe' + (mapState.sorted ? ' sorted' : '') }, canvas, labels);
-    const caption = h('figcaption', { class: 'small', role: 'status', 'aria-live': 'polite' });
-    const toggle = h('button', { type: 'button', class: 'btn quiet' });
-    let t = mapState.sorted ? 1 : 0;        // 0 = jumbled, 1 = sorted
-    let raf = 0;
-
+    });
+    const canvas = h('canvas', { role: 'img', 'aria-label': lab.mapAlt || '' });
+    const caption = h('p', { class: 'small', role: 'status', 'aria-live': 'polite' });
+    const toggle = h('button', { type: 'button', class: 'btn ghost', 'data-k': 'mapsort' });
+    let t = state.map.sorted ? 1 : 0;
+    const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
     const draw = () => {
-      const css = getComputedStyle(document.documentElement);
-      const grey = css.getPropertyValue('--ink-soft').trim() || '#777';
       const ratio = window.devicePixelRatio || 1;
       const w = canvas.clientWidth;
       const hgt = canvas.clientHeight;
@@ -493,678 +487,458 @@
       const g2 = canvas.getContext('2d');
       g2.setTransform(ratio, 0, 0, ratio, 0, 0);
       g2.clearRect(0, 0, w, hgt);
-      const r = Math.max(1.4, Math.min(w, hgt) / 210);
-      const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+      const r = Math.max(1.3, Math.min(w, hgt) / 200);
       const pass = (g, colour, alpha) => {
         if (alpha <= 0.004) return;
-        g2.globalAlpha = alpha;
-        g2.fillStyle = colour;
-        g2.beginPath();
+        g2.globalAlpha = alpha; g2.fillStyle = colour; g2.beginPath();
         for (let i = 0; i < g.pts.length; i += 1) {
-          const local = ease(Math.min(1, Math.max(0, (t - g.delay[i]) / 0.65)));
-          const x = (g.mixed[i][0] + (g.sorted[i][0] - g.mixed[i][0]) * local) * w;
-          const y = (g.mixed[i][1] + (g.sorted[i][1] - g.mixed[i][1]) * local) * hgt;
-          g2.moveTo(x + r, y);
-          g2.arc(x, y, r, 0, Math.PI * 2);
+          const k = ease(Math.min(1, Math.max(0, (t - g.delay[i]) / 0.65)));
+          const x = (g.mixed[i][0] + (g.sorted[i][0] - g.mixed[i][0]) * k) * w;
+          const y = (g.mixed[i][1] + (g.sorted[i][1] - g.mixed[i][1]) * k) * hgt;
+          g2.moveTo(x + r, y); g2.arc(x, y, r, 0, Math.PI * 2);
         }
         g2.fill();
       };
       for (const g of groups) {
-        const focused = mapState.focus === g.id;
-        const dim = mapState.focus && !focused ? 0.22 : 1;
-        const tint = !g.cell ? 0 : focused ? 1 : ease(Math.min(1, t * 1.4));   // a chosen type shows its colour even in the jumble
-        pass(g, grey, 0.55 * (1 - tint) * dim);
+        const focused = state.map.focus === g.id;
+        const dim = state.map.focus && !focused ? 0.2 : 1;
+        const tint = !g.cell ? 0 : focused ? 1 : ease(Math.min(1, t * 1.4));
+        pass(g, css('--body', '#334155'), 0.5 * (1 - tint) * dim);
         if (g.cell) pass(g, colourOf(g.cell), 0.85 * tint * dim);
       }
       g2.globalAlpha = 1;
     };
-
     const sync = () => {
-      frame.classList.toggle('sorted', t >= 1);
-      toggle.textContent = (mapState.sorted ? st.unsortLabel : st.sortLabel) || '';
+      toggle.textContent = (state.map.sorted ? lab.unsortLabel : lab.sortLabel) || '';
       toggle.hidden = !toggle.textContent;
-      caption.textContent = (mapState.sorted ? st.captionSorted : st.captionUnsorted) || '';
+      caption.textContent = (state.map.sorted ? lab.captionSorted : lab.captionUnsorted) || '';
       caption.hidden = !caption.textContent;
     };
-
-    const animate = () => {
+    let raf = 0;
+    toggle.addEventListener('click', () => {
+      state.map.sorted = !state.map.sorted; sync();
       cancelAnimationFrame(raf);
-      const target = mapState.sorted ? 1 : 0;
-      if (reducedMotion.matches) { t = target; sync(); draw(); return; }
-      frame.classList.remove('sorted');
+      const target = state.map.sorted ? 1 : 0;
+      if (reducedMotion.matches) { t = target; draw(); return; }
       const from = t;
       const began = performance.now();
-      const length = 1500 * Math.abs(target - from) || 1;
-      const tick = (now) => {
-        if (!canvas.isConnected) return;
-        const k = Math.min(1, (now - began) / length);
-        t = from + (target - from) * k;
-        draw();
-        if (k < 1) raf = requestAnimationFrame(tick); else sync();
-      };
+      const tick = (now) => { if (!canvas.isConnected) return; const k = Math.min(1, (now - began) / 1500); t = from + (target - from) * k; draw(); if (k < 1) raf = requestAnimationFrame(tick); };
       raf = requestAnimationFrame(tick);
-    };
-
-    toggle.addEventListener('click', () => { mapState.sorted = !mapState.sorted; sync(); animate(); });
+    });
     sync();
     if ('ResizeObserver' in window) new ResizeObserver(() => { if (canvas.isConnected) draw(); }).observe(canvas);
     requestAnimationFrame(draw);
-
-    return {
-      node: h('figure', { class: 'mapfig' }, frame, h('div', { class: 'maptools' }, toggle), caption),
-      setFocus: (id) => { mapState.focus = id; draw(); },
-    };
-  }
-
-  function renderMapping() {
-    const st = stage('mapping');
-    const map = mapFigure(st);
-    const keyButtons = [];
-    const key = h('ul', { class: 'key' }, data.cellTypes.map((cell) => {
-      const body = [swatch(cell), h('span', { class: 'kname', text: cell.label }), isText(cell.shortRole) && h('span', { class: 'krole', text: cell.shortRole })];
-      if (!map.setFocus) return h('li', {}, h('span', { class: 'keyitem' }, body));
-      const b = h('button', {
-        type: 'button', class: 'keyitem', 'aria-pressed': mapState.focus === cell.id ? 'true' : 'false',
-        onclick: () => {
-          const on = mapState.focus !== cell.id;
-          map.setFocus(on ? cell.id : null);
-          keyButtons.forEach((x) => x.setAttribute('aria-pressed', x === b && on ? 'true' : 'false'));
-        },
-      }, body);
-      keyButtons.push(b);
+    const chips = [];
+    const key = h('ul', { class: 'chips' }, list(data.cellTypes).filter((c) => src[c.id]).map((cell) => {
+      const b = h('button', { type: 'button', class: 'chip', 'aria-pressed': state.map.focus === cell.id ? 'true' : 'false',
+        onclick: () => { const on = state.map.focus !== cell.id; state.map.focus = on ? cell.id : null; chips.forEach((x) => x.setAttribute('aria-pressed', x === b && on ? 'true' : 'false')); draw(); } },
+        h('span', { class: 'dot', style: `background:${colourOf(cell)}`, 'aria-hidden': 'true' }), label(cell));
+      chips.push(b);
       return h('li', {}, b);
     }));
-    const aside = st.aside && isText(st.aside.heading) && list(st.aside.body).length
-      ? h('details', { class: 'drawer' }, h('summary', { text: st.aside.heading }), h('div', { class: 'drawer-body' }, paras(st.aside.body)))
-      : null;
-    return h('section', { class: 'view' },
-      backToStep('mapping'),
-      h('div', { class: 'prose' },
-        h('h1', { tabindex: '-1', text: st.heading || st.navLabel || '' }),
-        paras(st.body, 'lede')),
-      h('div', { class: 'maplayout' },
-        map.node,
-        h('div', { class: 'block' },
-          isText(st.keyHeading) && h('h2', { text: st.keyHeading }),
-          map.setFocus && para(st.keyHint, 'small'),
-          key)),
-      figureCards(st.figures),
-      aside,
-      h('div', { class: 'actions' }, nextButton('mapping', st.nextLabel)));
+    return h('div', { class: 'mapfig' }, h('div', { class: 'mapframe' }, canvas), h('div', { class: 'plot-tools' }, toggle), caption, key);
   }
 
-  /* ---------- stage 3: analysis — one chart ---------- */
-
-  function renderChart(heroId) {
-    const st = stage('analysis') || {};
-    const cells = sortedCells();
-    const axis = sharedAxis();
-    const anyDonors = cells.some(hasDonors);
-
-    const chart = h('ul', { class: 'chart' });
-    chart.append(h('li', { class: 'axis' },
-      h('span', { class: 'axis-title', text: axisTitle() }),
-      buildTicks(axis, measure().unit), h('span', {})));
-
-    cells.forEach((cell) => {
-      const track = h('span', { class: 'track' }, buildTrack(cell, axis, 'small'));
-      if (cell.id === heroId) track.style.viewTransitionName = 'hero';
-      const readout = fill(st.rowReadout, ctx(cell));
-      chart.append(h('li', {},
-        h('a', { class: 'row', href: '#' + routeFor(cell), 'data-cell': cell.id, 'aria-label': [cell.label, cell.shortRole, readout].filter(Boolean).join('. ') },
-          h('span', { class: 'rowlabel' },
-            h('span', { class: 'name' }, swatch(cell), cell.label),
-            isText(cell.shortRole) && h('span', { class: 'role', text: cell.shortRole }),
-            readout && h('span', { class: 'readout', text: readout })),
-          track,
-          h('span', { class: 'go', 'aria-hidden': 'true', text: '›' }))));
-    });
-
-    const allSmall = cells.length > 0 && cells.every((c) => (c.effect || {}).plainSize === 'small');
-    return h('section', { class: 'view' },
-      backToStep('analysis'),
-      h('div', { class: 'prose' },
-        h('h1', { tabindex: '-1', text: st.heading || (data.meta || {}).title || '' }),
-        paras(st.body, 'lede')),
-      legend(),
-      chart,
-      para([anyDonors && st.dotCaption, st.chartCaption].filter(isText).join(' '), 'caption'),
-      allSmall && para(st.allSmallNote, 'finding'),
-      hasWriteUp() && h('div', { class: 'actions' }, button('writeup', st.writeUpLabel || (data.writeUp || {}).heading, 'quiet')));
+  function figureCards(items) {
+    const cards = list(items).filter((f) => f && (isNum(f.value) || isText(f.value)));
+    if (!cards.length) return null;
+    return h('ul', { class: 'figures' }, cards.map((f) => h('li', { class: 'card stat' },
+      h('span', { class: 'fvalue', text: isNum(f.value) ? num(f.value, 0) : f.value }),
+      h('span', { class: 'funit', text: isText(f.unit) ? f.unit : ui('unitMissing') }),
+      isText(f.label) && h('span', { class: 'small', text: f.label }))));
   }
 
-  /* ---------- one cell type ---------- */
+  const linkOut = (url, text, cls) => h('a', { class: cls || 'btn', href: url, target: '_blank', rel: 'noopener' }, text, h('span', { class: 'sr', text: ' ' + ui('newTab') }), h('span', { class: 'arr', 'aria-hidden': 'true', text: '↗' }));
+  // A link to a form on another site, or a switched-off button with a note while the address is not set.
+  function formButton(url, text, pendingNote, id) {
+    if (!isText(text)) return null;
+    if (isUrl(url)) return linkOut(url, text);
+    return [h('button', { type: 'button', class: 'btn', disabled: true, 'aria-describedby': isText(pendingNote) ? id : null, text }), isText(pendingNote) && h('p', { id, class: 'small', text: pendingNote })];
+  }
+  function scrollToId(id) {
+    const el = $(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' });
+    const hd = el.querySelector('h2');
+    if (hd) { hd.setAttribute('tabindex', '-1'); hd.focus({ preventScroll: true }); }
+  }
+  const arrow = (ch) => h('span', { class: 'arr', 'aria-hidden': 'true', text: ch });
 
-  function numbersInWords(cell) {
-    const cs = data.cellScreen || {};
-    const e = cell.effect || {};
-    const c = ctx(cell);
-    const a = groupOf(cell, 'normal');
-    const b = groupOf(cell, 'dementia');
-    return [
-      para(measure().plainQuestion, 'kicker'),
-      isNum(a.mean) && isNum(b.mean) && para(cs.averageSentence, 'bignum', c, { meanDementia: 'gb', meanNormal: 'ga' }),
-      para((cs.verdict || {})[e.direction], 'verdict', c),
-      cell.storyRole === 'stable' && para(cs.stableNote, 'caption'),
-    ];
+  /* ---------- view 1: home — hero, poll, data lab ---------- */
+
+  function heroBlock() {
+    const hero = data.hero || {};
+    const prize = hero.prize || null;
+    return h('section', { class: 'hero' },
+      h('div', { class: 'hero-main' },
+        h('h1', { tabindex: '-1', text: hero.title || data.meta.title || '' }),
+        para(hero.subtitle, 'subtitle'),
+        para(hero.description, 'lede'),
+        data.poll && isText(hero.cta) && h('button', { type: 'button', class: 'btn big', onclick: () => scrollToId('poll') }, hero.cta, arrow('↓'))),
+      prize && data.prize && h('aside', { class: 'prizecard' },
+        isText(prize.badge) && h('p', { class: 'badge', text: prize.badge }),
+        heading(2, prize.heading),
+        para(prize.body),
+        isText(prize.cta) && h('a', { class: 'btn gold', href: '#prize' }, prize.cta, arrow('→'))));
   }
 
-  function pText(p, st) {
-    if (!isNum(p)) return '';
-    const floor = isNum(st.floor) ? st.floor : 0;
-    if (p < floor && isText(st.belowFloor)) return st.belowFloor;
-    return new Intl.NumberFormat('en-GB', { maximumSignificantDigits: 2 }).format(p);
-  }
-
-  function factList(rows) {
-    const facts = h('dl', { class: 'block' });
-    rows.forEach(([term, value, unitNote, note]) => {
-      if (!isText(term) || !value) return;
-      facts.append(h('div', {},
-        h('dt', {}, h('b', { text: term })),
-        h('dd', {}, value, isText(unitNote) && h('span', { class: 'unitnote', text: ` (${unitNote})` }), isText(note) && h('span', { class: 'small', text: ' ' + note }))));
-    });
-    return facts.children.length ? facts : null;
-  }
-
-  function statsDrawer(cell) {
-    const st = data.stats;
-    if (!st || !isText(st.summary)) return null;
-    const meta = data.meta || {};
-    const e = cell.effect || {};
-    const c = ctx(cell);
-    const cols = st.columns || {};
-    const rows = GROUPS.map((g) => {
-      const v = groupOf(cell, g.key);
-      return h('tr', {},
-        h('th', { scope: 'row', text: groupName(g.key) }),
-        h('td', { class: 'num', text: isNum(v.n) ? String(v.n) : '' }),
-        h('td', { class: 'num', text: num(v.mean, dec() + 1) }),
-        h('td', { class: 'num', text: num(v.sd, dec() + 1) }));
-    });
-    const d = st.cohensD || {};
-    const p = st.pValue || {};
-    const diff = st.difference || {};
-    return h('details', { class: 'drawer' },
-      h('summary', { text: st.summary }),
-      h('div', { class: 'drawer-body' },
-        h('div', { class: 'tablewrap' }, h('table', {},
-          h('thead', {}, h('tr', {},
-            h('th', { scope: 'col', text: fill(cols.group, c) }),
-            h('th', { scope: 'col', class: 'num', text: fill(cols.n, c) || ui('unitMissing') }),
-            h('th', { scope: 'col', class: 'num', text: fill(cols.mean, c) || measure().unit || ui('unitMissing') }),
-            h('th', { scope: 'col', class: 'num', text: fill(cols.sd, c) || measure().unit || ui('unitMissing') }))),
-          h('tbody', {}, rows))),
-        factList([
-          [diff.term, isNum(e.difference) ? qty(e.difference, e.unit || measure().unit, dec() + 1) : '', '', diff.note],
-          [d.term, isNum(e.cohensD) ? num(e.cohensD, 2) + (isText(e.plainSize) ? ` — ${e.plainSize}` : '') : '', e.cohensDUnit && e.cohensDUnit !== 'none' ? e.cohensDUnit : d.unitNote || ui('unitMissing'), d.note],
-          [p.term, pText(e.pAdjusted, p), p.unitNote || ui('unitMissing'), p.note],
-        ]),
-        isText(meta.methodPlain) && h('p', {}, isText(st.methodHeading) && h('b', { text: st.methodHeading + ' ' }), meta.methodPlain),
-        para(st.whyPeople, null, c),
-        cell.genesChanged && para(st.genesChanged, 'small', c)));
-  }
-
-  function caveatsBlock(cell) {
-    const items = [...list(measure().caveats), ...list(cell && cell.caveats)];
-    if (!items.length) return null;
-    const heading = (data.cellScreen || {}).caveatsHeading;
-    return h('section', { class: 'caveats' },
-      isText(heading) && h('h2', { text: heading }),
-      h('ul', {}, items.map((c) => h('li', { text: c }))));
-  }
-
-  function geneCards(cell) {
-    const gs = data.geneScreen || {};
-    return h('div', { class: 'genes' }, genesOf(cell).map((g) => {
-      const change = fill(gs.cardChange, ctx(cell, g));
-      return h('a', { class: 'gene', href: '#' + routeFor(cell, g) },
-        h('span', { class: 'sym', text: g.symbol }),
-        isText(g.name) && h('span', { class: 'gname', text: g.name }),
-        geneRatio(g) && change && h('span', { class: 'gchange', text: change }));
-    }));
-  }
-
-  function renderCell(cell) {
-    const cs = data.cellScreen || {};
-    const an = stage('analysis') || {};
-    const { fig, track } = cellFigure(cell, null);
-    track.style.viewTransitionName = 'hero';
-    const genes = genesOf(cell);
-    const ch = data.challenge || {};
-    return h('section', { class: 'view' },
-      backLink('top', an.backLabel || an.navLabel),
-      h('div', { class: 'prose' },
-        h('h1', { tabindex: '-1' }, swatch(cell), cell.label),
-        para(cell.role, 'lede')),
-      fig,
-      hasDonors(cell) && para(cs.gapPrompt, 'caption'),
-      h('div', { class: 'block' }, numbersInWords(cell)),
-      statsDrawer(cell),
-      caveatsBlock(cell),
-      h('div', { class: 'nextup' },
-        passageFor(cell) && button('writeup-' + slug(cell.id), cs.writeUpLabel || an.writeUpLabel || (data.writeUp || {}).heading, 'big'),
-        genes.length > 0 && isText(cs.genesLabel) && h('details', { class: 'further' },
-          h('summary', { text: cs.genesLabel }),
-          h('div', { class: 'further-body' }, para(ch.geneIntro, 'small'), geneCards(cell)))));
-  }
-
-  /* ---------- one gene: the optional detour ---------- */
-
-  function renderGene(cell, gene) {
-    const gs = data.geneScreen || {};
-    const ch = data.challenge || null;
-    const c = ctx(cell, gene);
-    const unit = tokenValue('geneUnit', c);
-    const axis = niceAxis(extentOf(gene));
-    const ratio = geneRatio(gene);
-    const a = groupOf(gene, 'normal');
-    const b = groupOf(gene, 'dementia');
-
-    const cellLabel = (idOrName) => {
-      const hit = data.cellTypes.find((x) => x.id === idOrName || x.label === idOrName);
-      return hit ? hit.label : String(idOrName);
-    };
-    const elsewhere = list(gene.alsoExpressedIn).filter((x) => x && isNum(x.mean));
-    let bars = null;
-    if (elsewhere.length) {
-      const hereValue = isNum(gene.hereMean) ? gene.hereMean : a.mean;
-      const here = isNum(hereValue) ? [{ label: fill(gs.elsewhereHere, c) || cell.label, mean: hereValue, current: true }] : [];
-      const all = here.concat(elsewhere.map((x) => ({ label: cellLabel(x.cellType), mean: x.mean })));
-      const barAxis = niceAxis(Math.max(...all.map((x) => x.mean)));
-      const u = unitScale();
-      bars = h('section', { class: 'block' },
-        isText(gs.elsewhereHeading) && h('h2', { text: gs.elsewhereHeading }),
-        para(gs.elsewhereCaption, 'caption', c),
-        h('div', { class: 'bars' }, all.map((x) => {
-          const svg = s('svg', { height: 18 * u, 'aria-hidden': 'true', focusable: 'false' });
-          svg.append(s('rect', { class: 'bar' + (x.current ? ' current' : ''), x: 0, y: 2 * u, height: 14 * u, rx: 3 * u, width: Math.max(0.5, (x.mean / barAxis.max) * 100) + '%' }));
-          return h('div', { class: 'barrow' + (x.current ? ' current' : '') },
-            h('span', { text: x.label }), svg, h('span', { class: 'val', text: qty(x.mean, unit, geneDec()) }));
-        })),
-        para(gs.elsewhereNote, 'small', c));
-    }
-
-    const lf = gs.log2FC || {};
-    const pv = gs.pValue || {};
-    const technical = factList([
-      [lf.term, isNum(gene.log2FC) ? num(gene.log2FC, 2) : '', lf.unitNote || ui('unitMissing'), lf.note],
-      [pv.term, pText(gene.pAdjusted, Object.assign({}, (data.stats || {}).pValue, pv)), pv.unitNote || ui('unitMissing'), pv.note],
-      ...GROUPS.map((g) => {
-        const v = groupOf(gene, g.key);
-        const line = isNum(v.mean) ? fill(gs.groupLine, ctx(cell, gene, { mean: qty(v.mean, unit, geneDec()), sd: isNum(v.sd) ? qty(v.sd, unit, geneDec()) : '' })) || qty(v.mean, unit, geneDec()) : '';
-        return [groupName(g.key), line, '', ''];
-      }),
-    ]);
-
-    return h('section', { class: 'view' },
-      backLink(routeFor(cell), cell.label),
-      ch && para(ch.geneIntro, 'detour'),
-      h('div', { class: 'prose' },
-        para(gs.kicker, 'kicker', c),
-        h('h1', { tabindex: '-1', text: gene.symbol }),
-        isText(gene.name) && h('p', { class: 'small', text: gene.name }),
-        para(gene.plainRole, 'lede')),
-      isNum(a.mean) && isNum(b.mean) && h('figure', { class: 'hero' },
-        legend(),
-        h('div', { class: 'axis' }, buildTicks(axis, '')),
-        h('div', { class: 'track' }, buildTrack(gene, axis, 'big')),
-        h('figcaption', { class: 'small', text: fill(gs.figCaption, c) || [geneMeasure().label, unit].filter(Boolean).join(' — ') })),
-      ratio && para(ratio.same ? gs.verdictSame : gs.verdict, 'verdict', c),
-      para(gene.note, 'prose'),
-      technical && isText(gs.technicalSummary) && h('details', { class: 'drawer' },
-        h('summary', { text: gs.technicalSummary }),
-        h('div', { class: 'drawer-body' }, technical)),
-      bars,
-      caveatsBlock(cell),
-      ch && h('div', { class: 'block' },
-        para(ch.geneTask, 'prose'),
-        h('div', { class: 'actions' }, button('challenge', gs.challengeLabel || ch.navLabel || ch.heading && fill(ch.heading, ctx()), 'quiet'))));
-  }
-
-  /* ---------- stage 4: the write-up — a passage with gaps ---------- */
-
-  function renderWriteUp(cell, routeKey) {
-    const w = data.writeUp || {};
-    const passage = passageFor(cell);
-    const own = !!(cell.writeUp && passage === cell.writeUp);
-    const key = (own ? 'own:' : 'shared:') + cell.id;
-    const parts = list(passage.parts).filter((p) => p && (p.type === 'text' || p.type === 'break' || (p.type === 'blank' && list(p.options).length >= 2)));
-    const blanks = parts.filter((p) => p.type === 'blank');
-    blanks.forEach((b, i) => { if (!isText(b.id)) b.id = 'gap' + (i + 1); });
-    if (!cloze.has(key)) cloze.set(key, { done: new Map(), tried: new Map(), active: null, last: null });
-    const st = cloze.get(key);
-    const c = ctx(cell);
-    const sheet = h('div', { class: 'sheet' });
-    const an = stage('analysis') || {};
-
-    const optionText = (b, i) => fill(String(b.options[i]), c);
-    const complete = () => blanks.every((b) => st.done.has(b.id));
-    const plainText = () => {
-      let out = '';
-      for (const p of parts) {
-        if (p.type === 'text') out += fill(p.text, c);
-        else if (p.type === 'break') out += '\n\n';
-        else out += st.done.has(p.id) ? optionText(p, p.correct) : '_____';
-      }
-      return out.trim();
+  function pollBlock() {
+    const poll = data.poll;
+    if (!poll || !list(poll.items).length) return null;
+    const items = list(poll.items);
+    const keys = ['true', 'false', 'dk'];
+    const names = poll.options || {};
+    const box = h('section', { class: 'band', id: 'poll' });
+    const endpoint = isUrl((data.config || {}).pollEndpoint) ? data.config.pollEndpoint : null;
+    const P = state.poll;
+    const csv = (rec) => {
+      const head = ['submitted', 'classCode', ...items.map((i) => i.id), 'score'];
+      const row = [rec.at, rec.classCode, ...items.map((i) => rec.answers[i.id] || ''), rec.score];
+      return [head, row].map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
     };
 
     const paint = (focus) => {
-      const total = blanks.length;
-      const openBlanks = blanks.filter((b) => !st.done.has(b.id));
-      if (!openBlanks.some((b) => b.id === st.active)) st.active = openBlanks.length ? openBlanks[0].id : null;
-      const active = blanks.find((b) => b.id === st.active) || null;
-
-      // the passage itself: continuous prose, with a control wherever a gap is
-      const text = h('div', { class: 'passage' });
-      let line = h('p', {});
-      text.append(line);
-      for (const p of parts) {
-        if (p.type === 'break') { line = h('p', {}); text.append(line); continue; }
-        if (p.type === 'text') { line.append(...fillNodes(p.text, c)); continue; }
-        const n = blanks.indexOf(p) + 1;
-        const longest = Math.min(26, Math.max(...p.options.map((_, i) => optionText(p, i).length)));
-        if (st.done.has(p.id)) {
-          line.append(h('span', { class: 'gap filled' + (st.done.get(p.id) === 'shown' ? ' shown' : ''), 'data-gap': p.id, text: optionText(p, p.correct) }));
-        } else {
-          line.append(h('button', {
-            type: 'button', class: 'gap' + (p.id === st.active ? ' active' : ''), 'data-gap': p.id,
-            style: `min-width:min(${longest * 0.62 + 2}em,100%)`,
-            'aria-label': fill(w.gapLabel, ctx(cell, null, { gapNumber: n, total })) || `${n} / ${total}`,
-            'aria-current': p.id === st.active ? 'true' : null,
-            onclick: () => { st.active = p.id; st.last = null; paint('option'); },
-          }, h('span', { class: 'gapnum', 'aria-hidden': 'true', text: String(n) })));
-        }
-      }
-
-      const status = h('p', { class: 'feedback', role: 'status', 'aria-live': 'polite' });
-      if (st.last) status.append(h('span', { class: st.last.good ? 'good' : 'retry', text: st.last.text }));
-
-      let chooser = null;
-      if (active) {
-        const tried = st.tried.get(active.id) || new Set();
-        const n = blanks.indexOf(active) + 1;
-        const finish = (how) => {
-          st.done.set(active.id, how);
-          const fb = active.feedback || {};
-          const word = optionText(active, active.correct);
-          st.last = { good: true, text: [how === 'shown' ? w.shownNote : '', '“' + word + '”', fb.right].filter(isText).join(' ') };
-          paint(complete() ? 'done' : 'option');
-        };
-        const options = active.options.map((_, i) => h('button', {
-          type: 'button', role: 'radio', 'aria-checked': 'false', class: 'option' + (tried.has(i) ? ' tried' : ''),
-          tabindex: i === 0 ? '0' : '-1',
-          onclick: () => {
-            if (i === active.correct) { finish('right'); return; }
-            tried.add(i);
-            st.tried.set(active.id, tried);
-            st.last = { good: false, text: (active.feedback || {}).wrong || '' };
-            paint('option:' + i);
-          },
-        }, optionText(active, i), tried.has(i) && h('span', { class: 'triedmark', text: ` — ${ui('tried')}` })));
-        const group = h('div', {
-          class: 'options', role: 'radiogroup', 'aria-label': fill(w.gapLabel, ctx(cell, null, { gapNumber: n, total })) || String(n),
-          onkeydown: (ev) => {
-            const move = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[ev.key];
-            if (!move) return;
-            ev.preventDefault();
-            const at = options.indexOf(document.activeElement);
-            const to = options[(at + move + options.length) % options.length];
-            options.forEach((o) => o.setAttribute('tabindex', o === to ? '0' : '-1'));
-            to.focus();
-          },
-        }, options);
-        chooser = h('div', { class: 'chooser' },
-          h('p', { class: 'gaplabel' }, h('span', { class: 'gapnum', 'aria-hidden': 'true', text: String(n) }), fill(w.gapLabel, ctx(cell, null, { gapNumber: n, total }))),
-          group,
-          h('button', { type: 'button', class: 'showme', text: ui('showAnswer'), onclick: () => finish('shown') }));
-      }
-
-      let ending = null;
-      if (complete()) {
-        const copyBtn = isText(w.copyLabel) && h('button', {
-          type: 'button', class: 'btn quiet',
-          onclick: (ev) => {
-            const btn = ev.currentTarget;
-            const fallback = () => {
-              const range = document.createRange();
-              range.selectNodeContents(text);
-              const sel = window.getSelection();
-              sel.removeAllRanges();
-              sel.addRange(range);
-              btn.textContent = ui('copySelected');
-            };
-            try {
-              if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(plainText()).then(() => { btn.textContent = ui('copied'); }, fallback);
-              else fallback();
-            } catch (err) { fallback(); }
-          },
-        }, w.copyLabel);
-        ending = h('div', { class: 'ending' },
-          isText(w.conclusionHeading) && h('h2', { tabindex: '-1', text: w.conclusionHeading }),
-          paras(passage.conclusion, null, c),
+      const done = P.submitted;
+      const kids = [heading(2, poll.heading), para(poll.framing, 'lede')];
+      if (!done) {
+        const count = () => items.filter((i) => P.answers[i.id]).length;
+        const submit = h('button', { type: 'submit', class: 'btn big', disabled: count() < items.length, text: poll.submitLabel || '' });
+        const progress = h('span', { class: 'small', role: 'status', text: fill(poll.progressLabel, { answered: count(), total: items.length }) });
+        kids.push(h('form', { class: 'poll', novalidate: true, onsubmit: (ev) => {
+          ev.preventDefault();
+          if (count() < items.length) return;
+          const score = items.filter((i) => P.answers[i.id] === i.correct).length;
+          P.submitted = { at: new Date().toISOString(), classCode: P.classCode.trim().slice(0, 24), answers: Object.assign({}, P.answers), score };
+          store.set('poll', P.submitted);
+          if (endpoint) { try { fetch(endpoint, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(P.submitted) }).catch(() => {}); } catch (e) { /* offline: the result is still shown */ } }
+          paint('result');
+        } },
+          h('ol', { class: 'poll-items' }, items.map((item, n) => h('li', {}, h('fieldset', {},
+            h('legend', {}, h('span', { class: 'qn', 'aria-hidden': 'true', text: String(n + 1) }), `“${item.statement}”`),
+            h('div', { class: 'tfd' }, keys.map((k) => h('label', { for: `${item.id}-${k}` },
+              h('input', { type: 'radio', name: item.id, value: k, id: `${item.id}-${k}`, checked: P.answers[item.id] === k,
+                onchange: () => { P.answers[item.id] = k; submit.disabled = count() < items.length; progress.textContent = fill(poll.progressLabel, { answered: count(), total: items.length }); } }),
+              h('span', { text: names[k] || k }))))))),
+          ),
+          isText(poll.classCodeLabel) && h('div', { class: 'classcode' },
+            h('label', { for: 'classcode', text: poll.classCodeLabel }),
+            h('input', { id: 'classcode', type: 'text', maxlength: '24', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', value: P.classCode, 'aria-describedby': isText(poll.classCodeHint) ? 'classcode-hint' : null, oninput: (ev) => { P.classCode = ev.target.value; } }),
+            isText(poll.classCodeHint) && h('p', { id: 'classcode-hint', class: 'small', text: poll.classCodeHint })),
+          h('div', { class: 'actions' }, submit, progress),
+          para(endpoint ? poll.privacyShared : poll.privacyLocal, 'small')));
+      } else {
+        const mean = items.reduce((a, i) => a + ((i.benchmark || {})[i.correct] || 0), 0) / items.length;
+        kids.push(h('div', { class: 'result' },
+          h('h3', { class: 'score', tabindex: '-1' }, fillNodes(poll.resultHeading, { score: done.score, total: items.length })),
+          para(poll.resultCompare, null, { benchmarkMean: qty(mean, '%', 0) }),
+          h('ol', { class: 'compare' }, items.map((item) => {
+            const b = item.benchmark || {};
+            const mine = done.answers[item.id];
+            const right = mine === item.correct;
+            return h('li', { class: 'card' },
+              h('p', { class: 'statement' }, `“${item.statement}”`),
+              h('p', {}, h('span', { class: 'verdict ' + (right ? 'right' : 'wrong'), text: (right ? poll.rightLabel : poll.wrongLabel) || '' }), ' ',
+                [isText(poll.yourAnswer) && `${poll.yourAnswer}: ${names[mine] || mine}.`, isText(poll.correctAnswer) && `${poll.correctAnswer}: ${names[item.correct] || item.correct}.`].filter(Boolean).join(' ')),
+              h('div', { class: 'bar', role: 'img', 'aria-label': [poll.benchmarkLabel, keys.map((k) => `${names[k] || k} ${qty(b[k], '%', 1)}`).join(', ')].filter(isText).join(': ') },
+                keys.map((k) => (isNum(b[k]) ? h('span', { class: 'seg ' + k + (k === item.correct ? ' correct' : ''), style: `width:${b[k]}%` }) : null))),
+              h('p', { class: 'small barkey' }, isText(poll.benchmarkLabel) && h('b', { text: poll.benchmarkLabel + ': ' }), keys.map((k, i) => h('span', { class: k === item.correct ? 'kcorrect' : null },
+                `${names[k] || k} ${qty(b[k], '%', 1)}`, mine === k && h('i', { text: ` (${ui('you')})` }), i < keys.length - 1 ? ' · ' : ''))));
+          })),
+          (isText(poll.benchmarkSource) || isUrl(poll.benchmarkSourceUrl)) && h('p', { class: 'small' }, poll.benchmarkSource || '', ' ', isUrl(poll.benchmarkSourceUrl) && linkOut(poll.benchmarkSourceUrl, poll.benchmarkSourceUrl.replace(/^https:\/\/([^/]+).*$/, '$1'), 'inline')),
           h('div', { class: 'actions' },
-            copyBtn,
-            data.challenge && button('challenge', fill(w.challengeLabel, ctx()) || (data.challenge || {}).navLabel)));
+            isText(poll.exportLabel) && h('button', { type: 'button', class: 'btn ghost', text: poll.exportLabel, onclick: () => saveBlob(new Blob([csv(done)], { type: 'text/csv' }), 'alzexplore-poll.csv') }),
+            isText(poll.retakeLabel) && h('button', { type: 'button', class: 'btn ghost', text: poll.retakeLabel, onclick: () => { P.submitted = null; P.answers = {}; paint('form'); } }),
+            isText(poll.clearLabel) && h('button', { type: 'button', class: 'linkbtn', text: poll.clearLabel, onclick: () => { store.del('poll'); P.submitted = null; P.answers = {}; P.classCode = ''; paint('form'); } }))));
+        if (list(poll.decoders).length) {
+          kids.push(heading(3, poll.decodersHeading, null, 'subhead'),
+            h('ul', { class: 'bento three' }, list(poll.decoders).map((d) => h('li', { class: 'card' }, heading(4, d.title), para(d.body)))));
+        }
+        if (data.lab && isText(poll.labCta)) kids.push(h('div', { class: 'actions' }, h('button', { type: 'button', class: 'btn big', onclick: () => scrollToId('lab') }, poll.labCta, arrow('↓'))));
       }
-
-      sheet.replaceChildren(...[
-        total > 0 && h('p', { class: 'progress' },
-          h('span', { class: 'pips', 'aria-hidden': 'true' }, blanks.map((b) => h('span', { class: 'pip' + (st.done.has(b.id) ? ' on' : '') }))),
-          fill(w.progressLabel, ctx(cell, null, { filled: st.done.size, total })) || `${st.done.size} / ${total}`),
-        text, status, chooser, ending].filter(Boolean));
-
-      if (!focus) return;
-      let target = null;
-      if (focus === 'done') target = sheet.querySelector('.ending h2') || sheet.querySelector('.ending .btn');
-      else if (focus.startsWith('option:')) target = sheet.querySelectorAll('.chooser .option')[Number(focus.slice(7))];
-      else target = sheet.querySelector('.chooser .option');
-      if (target) {
-        if (target.getAttribute('role') === 'radio') sheet.querySelectorAll('.chooser .option').forEach((o) => o.setAttribute('tabindex', o === target ? '0' : '-1'));
-        target.focus({ preventScroll: true });
-        target.scrollIntoView({ block: 'nearest', behavior: reducedMotion.matches ? 'auto' : 'smooth' });
-      }
+      box.replaceChildren(...kids.flat(Infinity).filter(Boolean));
+      if (focus === 'result') { const t = box.querySelector('.score'); if (t) { t.focus({ preventScroll: true }); t.scrollIntoView({ block: 'start', behavior: reducedMotion.matches ? 'auto' : 'smooth' }); } }
+      if (focus === 'form') { const t = box.querySelector('input'); if (t) t.focus(); }
     };
     paint(null);
-
-    const { fig } = cellFigure(cell, fill(w.figureHeading, c) || cell.label);
-    return h('section', { class: 'view' },
-      routeKey === 'writeup' ? backLink('top', an.backLabel || an.navLabel) : backLink(routeFor(cell), cell.label),
-      h('div', { class: 'prose' },
-        h('h1', { tabindex: '-1', text: w.heading || w.navLabel || '' }),
-        paras(w.intro, 'lede', c)),
-      h('div', { class: 'writeup' }, h('div', { class: 'pinned' }, fig), sheet));
+    return box;
   }
 
-  /* ---------- the challenge: a side branch ---------- */
+  const currentCase = () => byId(data.caseStudies, state.caseId) || list(data.caseStudies)[0] || null;
+  function sandboxDefaults() {
+    const first = list((data.lab || {}).launchpads)[0] || list(data.series)[0] || {};
+    return { metric: first.metric, cellType: first.cellType, grouping: first.grouping || (list(data.groupings)[0] || {}).id };
+  }
 
-  function renderChallenge() {
-    const ch = data.challenge;
-    const cfg = data.config || {};
-    const c = ctx();
-    const url = /^https:\/\//.test(cfg.entryFormUrl || '') ? cfg.entryFormUrl : null;
-    const shortUrl = isText(cfg.entryFormShortUrl) && cfg.entryFormShortUrl !== 'PLACEHOLDER' ? cfg.entryFormShortUrl : null;
-    const offline = h('p', { class: 'offline', role: 'status', hidden: true, text: ch.offlineNote || '' });
-    const syncOffline = () => { offline.hidden = navigator.onLine !== false || !isText(ch.offlineNote); };
-    syncOffline();
-    const onNet = () => { if (offline.isConnected) syncOffline(); else { window.removeEventListener('online', onNet); window.removeEventListener('offline', onNet); } };
-    window.addEventListener('online', onNet);
-    window.addEventListener('offline', onNet);
+  function labBlock() {
+    const lab = data.lab;
+    if (!lab || !list(data.series).length || !list(data.donors).length) return null;
+    const box = h('section', { class: 'band lab', id: 'lab' });
+    let origin = null;      // built once, so the map keeps its state while the rest of the lab repaints
 
-    const section = (heading, ...body) => {
-      const kids = body.flat(Infinity).filter(Boolean);
-      return kids.length ? h('section', { class: 'block' }, isText(heading) && h('h2', { text: heading }), kids) : null;
+    const paint = (focusKey) => {
+      const pill = (key, on, text, onclick) => h('button', { type: 'button', class: 'switch', role: 'switch', 'aria-checked': on ? 'true' : 'false', 'data-k': key, onclick }, h('span', { class: 'knob', 'aria-hidden': 'true' }), h('span', { text }));
+      const controls = h('div', { class: 'labbar' },
+        isText(lab.translatorLabel) && pill('translator', state.plain, [lab.translatorLabel, state.plain ? lab.translatorOn : lab.translatorOff].filter(isText).join(': '), () => { state.plain = !state.plain; origin = null; paint('translator'); }),
+        isText(lab.overlayLabel) && pill('overlay', state.overlay, lab.overlayLabel, () => { state.overlay = !state.overlay; paint('overlay'); }));
+      const cheats = list(lab.cheats).length && isText(lab.cheatHeading) ? h('details', { class: 'drawer' }, h('summary', { text: lab.cheatHeading }),
+        h('ul', { class: 'bento five' }, list(lab.cheats).map((c) => h('li', { class: 'card mini' }, heading(4, c.title), para(c.body, 'small')))),
+        list(data.terms).length > 0 && h('ul', { class: 'terms small' }, list(data.terms).map((t) => h('li', {}, h('b', { text: t.research }), ' = ', t.plain)))) : null;
+      if (!origin) {
+        const map = mapBlock();
+        const text = [paras(lab.originBody), figureCards(lab.originFigures)].flat(Infinity).filter(Boolean);
+        origin = (map || text.length) && isText(lab.originHeading) ? h('details', { class: 'drawer origin', open: true }, h('summary', { text: lab.originHeading }),
+          h('div', { class: 'origin-grid' }, text.length > 0 && h('div', { class: 'stack' }, text), map)) : false;
+      }
+      const hasGuided = list(data.caseStudies).length > 0;
+      if (!hasGuided) state.mode = 'sandbox';
+      const tabs = hasGuided ? h('div', { class: 'modes', role: 'tablist' },
+        [['guided', lab.modeGuided], ['sandbox', lab.modeSandbox]].map(([id, text]) => h('button', { type: 'button', role: 'tab', 'aria-selected': state.mode === id ? 'true' : 'false', 'data-k': 'mode-' + id, onclick: () => { state.mode = id; paint('mode-' + id); } }, text || id))) : null;
+      box.replaceChildren(...[heading(2, lab.heading), para(lab.intro, 'lede'), origin, controls, cheats, tabs,
+        state.mode === 'guided' ? guidedBlock(paint) : sandboxBlock(paint)].flat(Infinity).filter(Boolean));
+      if (focusKey) { const t = box.querySelector(`[data-k="${focusKey}"]`); if (t) t.focus({ preventScroll: true }); }
     };
-    const win = ch.winner || {};
-    const winner = cfg.winnerAnnounced === true
-      ? section(ch.winnerHeading,
-        h('div', { class: 'winner' },
-          isText(win.name) && h('p', { class: 'wname' }, win.name, isText(win.school) && h('span', { class: 'small', text: ' — ' + win.school })),
-          list(win.writeUp).length > 0 && h('blockquote', {}, paras(win.writeUp)),
-          para(win.judgeNote, 'small')))
-      : para(ch.winnerPendingNote, 'small');
 
-    const entry = h('div', { class: 'entry' },
-      url
-        ? h('a', { class: 'btn big', href: url, target: '_blank', rel: 'noopener' }, h('span', { text: ch.entryLabel || url }), h('span', { class: 'small', text: ' ' + ui('newTab') }))
-        : isText(ch.entryLabel) && h('button', { type: 'button', class: 'btn big', disabled: true, 'aria-describedby': 'entry-pending', text: ch.entryLabel }),
-      !url && h('p', { id: 'entry-pending', class: 'small', text: ch.entryPendingNote || '' }),
-      offline,
-      shortUrl && h('p', { class: 'shorturl' }, isText(ch.shortUrlLabel) && h('span', { class: 'small', text: ch.shortUrlLabel + ' ' }), h('span', { class: 'selectable', text: shortUrl })),
-      ch.qr && isText(ch.qr.src) && h('img', { class: 'qr', src: ch.qr.src, alt: ch.qr.alt || '', loading: 'lazy' }));
+    function guidedBlock(repaint) {
+      const cs = currentCase();
+      const title = (c) => (state.plain && isText(c.plainTitle) ? c.plainTitle : c.title) || c.id;
+      const picker = h('ul', { class: 'cases' }, list(data.caseStudies).map((c, i) => h('li', {}, h('button', { type: 'button', class: 'casebtn', 'aria-pressed': c === cs ? 'true' : 'false', 'data-k': 'case-' + c.id,
+        onclick: () => { state.caseId = c.id; state.step = 0; state.view = 0; repaint('case-' + c.id); } }, h('span', { class: 'qn', 'aria-hidden': 'true', text: String(i + 1) }), title(c)))));
+      const labels = list(lab.stepLabels);
+      const stepper = h('ol', { class: 'stepper' }, [0, 1, 2, 3].map((i) => h('li', { class: i === state.step ? 'here' : i < state.step ? 'done' : '' }, h('button', { type: 'button', 'aria-current': i === state.step ? 'step' : null, 'data-k': 'step-' + i, onclick: () => { state.step = i; repaint('step-' + i); } },
+        h('span', { class: 'qn', 'aria-hidden': 'true', text: String(i + 1) }), h('span', { class: 'sr', text: `${ui('step')} ${i + 1}: ` }), h('span', { class: 'steplabel', text: labels[i] || '' })))));
+      const views = list(cs.views);
+      state.view = Math.min(state.view, Math.max(0, views.length - 1));
+      const view = views[state.view] || {};
+      const base = { metric: view.metric, cellType: view.cellType, grouping: cs.grouping, filter: cs.filter || null };
+      const first = buildQuestion({ metric: (views[0] || {}).metric, cellType: (views[0] || {}).cellType, grouping: cs.grouping, filter: cs.filter || null });
+      const predicted = state.predictions[cs.id];
+      const predictOptions = list((cs.predict || {}).options);
+      const predLabel = (id) => (predictOptions.find((o) => o.id === id) || {}).label || '';
+      const nav = () => h('div', { class: 'actions' },
+        state.step > 0 && isText(lab.backLabel) && h('button', { type: 'button', class: 'btn ghost', text: lab.backLabel, onclick: () => { state.step -= 1; repaint('step-' + state.step); } }),
+        state.step < 3 && isText(lab.nextLabel) && h('button', { type: 'button', class: 'btn', 'data-k': 'next', onclick: () => { state.step += 1; repaint('step-' + state.step); } }, lab.nextLabel, arrow('→')));
+      const viewTabs = views.length > 1 ? h('div', { class: 'viewtabs' }, views.map((v, i) => h('button', { type: 'button', class: 'chip', 'aria-pressed': i === state.view ? 'true' : 'false', 'data-k': 'view-' + i, onclick: () => { state.view = i; repaint('view-' + i); } }, [label(metricOf(v.metric)), label(cellOf(v.cellType))].filter(Boolean).join(' · ')))) : null;
 
-    return h('section', { class: 'view' },
-      hasWriteUp() ? backLink('writeup', (data.writeUp || {}).navLabel) : backLink('top', (stage('analysis') || {}).navLabel),
-      h('div', { class: 'prose' },
-        h('h1', { tabindex: '-1', text: fill(ch.heading, c) || ch.navLabel || '' }),
-        paras(ch.intro, 'lede', c)),
-      isText(ch.question) && h('section', { class: 'question' },
-        isText(ch.questionLabel) && h('p', { class: 'kicker', text: ch.questionLabel }),
-        h('p', { class: 'qtext', text: ch.question }),
-        para(ch.wordLimitNote, 'small', c)),
-      section(ch.criteriaHeading, list(ch.criteria).length > 0 && h('ul', { class: 'ticks-list' }, list(ch.criteria).map((x) => h('li', { text: x })))),
-      section(ch.geneHeading, para(ch.geneTask, null, c)),
-      section(ch.judgedHeading, paras(ch.howJudged, null, c), isText(cfg.entryDeadline) && para(ch.deadlineLabel, 'deadline', c)),
-      h('section', { class: 'enter' },
-        section(ch.privacyHeading, paras(ch.privacy, null, c)),
-        entry),
-      winner);
+      let body;
+      if (state.step === 0) {
+        body = [para(cs.brief), cs.filter && para(cs.filter.note, 'small'),
+          predictOptions.length > 0 && h('fieldset', { class: 'predict' }, h('legend', { text: (cs.predict || {}).question || '' }),
+            h('div', { class: 'options' }, predictOptions.map((o) => h('button', { type: 'button', class: 'option', 'aria-pressed': predicted === o.id ? 'true' : 'false', 'data-k': 'pred-' + o.id, onclick: () => { state.predictions[cs.id] = o.id; repaint('next'); } }, o.label)))),
+          predicted && para(lab.predictSaved, 'good', { prediction: predLabel(predicted) }),
+          h('div', { class: 'actions' }, h('button', { type: 'button', class: predicted ? 'btn' : 'linkbtn', 'data-k': 'next', onclick: () => { state.step = 1; repaint('step-1'); } },
+            predicted ? [lab.nextLabel || '', arrow('→')] : lab.predictSkip || lab.nextLabel || '→'))];
+      } else if (state.step === 1) {
+        const Q = buildQuestion(base);
+        const vars = Object.assign(questionVars(first), { prediction: predLabel(predicted) });
+        body = [viewTabs, Q && chartBlock(Q),
+          first && para(!predicted ? lab.observeNoPrediction : predicted === first.trend ? lab.observeMatch : lab.observeMiss, 'callout', vars),
+          Q && para(lab.observeStats, null, questionVars(Q)), nav()];
+      } else if (state.step === 2) {
+        const chosen = state.strat[cs.id] || null;
+        const Q = buildQuestion(Object.assign({}, base, { confounder: chosen }));
+        const confs = list(cs.confounders).map((id) => byId(data.confounders, id)).filter(Boolean);
+        const conf = chosen ? byId(data.confounders, chosen) : null;
+        const counts = Q && conf ? h('div', { class: 'stack' }, heading(4, lab.stressCountsHeading),
+          h('div', { class: 'tablewrap' }, h('table', {},
+            h('thead', {}, h('tr', {}, h('th', { scope: 'col', text: `${conf.label} (${donorUnit() || ui('unitMissing')})` }), Q.groups.map((g) => h('th', { scope: 'col', class: 'num', text: g.name })))),
+            h('tbody', {}, Q.strata.map((st, si) => h('tr', {}, h('th', { scope: 'row', text: st }), Q.groups.map((g) => h('td', { class: 'num', text: String(g.parts[si].n) }))))))),
+          para(lab.stressCountsNote, 'small')) : null;
+        body = [para(lab.stressIntro),
+          confs.length > 0 && h('div', { class: 'viewtabs', role: 'group', 'aria-label': labels[2] || null }, [null, ...confs].map((c) => h('button', { type: 'button', class: 'chip', 'aria-pressed': (c ? c.id : null) === chosen ? 'true' : 'false', 'data-k': 'strat-' + (c ? c.id : 'none'), onclick: () => { state.strat[cs.id] = c ? c.id : null; repaint('strat-' + (c ? c.id : 'none')); } }, c ? c.label : lab.stressNone || '–'))),
+          viewTabs, Q && chartBlock(Q), counts, nav()];
+      } else {
+        const tk = cs.takeaway || {};
+        const all = list(data.caseStudies);
+        const next = all[(all.indexOf(cs) + 1) % all.length];
+        body = [first && list(tk.parts).length > 0 && clozeBlock('case:' + cs.id, tk, questionVars(first)),
+          (isText(tk.claim) || isText(tk.limitation)) && h('details', { class: 'drawer slim' }, h('summary', { text: ui('modelAnswer') }),
+            h('dl', { class: 'model' }, isText(tk.claim) && h('div', {}, h('dt', { text: lab.takeawayClaimLabel || '' }), h('dd', { text: tk.claim })), isText(tk.limitation) && h('div', {}, h('dt', { text: lab.takeawayLimitLabel || '' }), h('dd', { text: tk.limitation })))),
+          h('div', { class: 'actions' },
+            isText(lab.backLabel) && h('button', { type: 'button', class: 'btn ghost', text: lab.backLabel, onclick: () => { state.step = 2; repaint('step-2'); } }),
+            next && next !== cs && h('button', { type: 'button', class: 'btn', onclick: () => { state.caseId = next.id; state.step = 0; state.view = 0; repaint('case-' + next.id); } }, ui('nextCase'), arrow('→')),
+            isText(lab.toSandbox) && h('button', { type: 'button', class: 'btn ghost', text: lab.toSandbox, onclick: () => { state.mode = 'sandbox'; repaint('mode-sandbox'); } }))];
+      }
+      return h('div', { class: 'guided' }, picker, h('div', { class: 'card sim' }, h('h3', { text: title(cs) }), stepper, h('div', { class: 'stack stepbody' }, body)));
+    }
+
+    function sandboxBlock(repaint) {
+      if (!state.sandbox) state.sandbox = sandboxDefaults();
+      const sb = state.sandbox;
+      const metricsWithData = list(data.metrics).filter((m) => list(data.series).some((x) => x.metric === m.id));
+      const cellsFor = (metricId) => list(data.cellTypes).filter((c) => seriesOf(metricId, c.id));
+      if (!metricsWithData.some((m) => m.id === sb.metric)) sb.metric = (metricsWithData[0] || {}).id;
+      if (!cellsFor(sb.metric).some((c) => c.id === sb.cellType)) sb.cellType = (cellsFor(sb.metric)[0] || {}).id;
+      if (!groupingOf(sb.grouping)) sb.grouping = (list(data.groupings)[0] || {}).id;
+      const Q = buildQuestion(sb);
+      const b = lab.builder || {};
+      const select = (key, options, value, onchange) => h('select', { 'data-k': key, 'aria-label': key, onchange: (ev) => { onchange(ev.target.value); state.snapshotMade = false; repaint(key); } }, options.map((o) => h('option', { value: o.id, selected: o.id === value }, label(o))));
+      const pads = list(lab.launchpads);
+      return h('div', { class: 'sandbox stack' },
+        para(lab.sandboxIntro),
+        pads.length > 0 && h('ul', { class: 'bento three' }, pads.map((p) => h('li', {}, h('button', { type: 'button', class: 'card pad', 'aria-pressed': p.metric === sb.metric && p.cellType === sb.cellType && p.grouping === sb.grouping ? 'true' : 'false', 'data-k': 'pad-' + p.id,
+          onclick: () => { state.sandbox = { metric: p.metric, cellType: p.cellType, grouping: p.grouping }; state.snapshotMade = false; repaint('pad-' + p.id); } },
+          h('span', { class: 'padtitle', text: p.title || '' }), isText(p.blurb) && h('span', { class: 'small', text: p.blurb }),
+          h('span', { class: 'small padq', text: [label(metricOf(p.metric)), label(groupingOf(p.grouping)), label(cellOf(p.cellType))].filter(Boolean).join(' · ') }))))),
+        h('p', { class: 'builder' }, b.lead || '', ' ',
+          select('metric', metricsWithData, sb.metric, (v) => { sb.metric = v; }), ' ', b.mid1 || '', ' ',
+          select('grouping', list(data.groupings), sb.grouping, (v) => { sb.grouping = v; }), ' ', b.mid2 || '', ' ',
+          select('cellType', cellsFor(sb.metric), sb.cellType, (v) => { sb.cellType = v; }), b.end || ''),
+        Q && chartBlock(Q),
+        Q && h('div', { class: 'stack' }, heading(4, lab.statsHeading), statsTable(Q)),
+        Q && isText(lab.snapshotLabel) && h('div', { class: 'actions' },
+          h('button', { type: 'button', class: 'btn', 'data-k': 'snapshot', onclick: async () => { try { saveBlob(await composeCard(Q, true), fileStem(Q) + '-snapshot.png'); } catch (e) { /* the picture could not be made on this device */ } state.snapshotMade = true; repaint('snapshot'); } }, lab.snapshotLabel)),
+        state.snapshotMade && h('div', { class: 'bridge', role: 'status' }, para(lab.snapshotDone, 'small'),
+          data.prize && isText(lab.snapshotBridge) && h('a', { href: '#prize' }, fillNodes(lab.snapshotBridge), arrow('→'))));
+    }
+
+    paint(null);
+    return box;
   }
 
-  /* ---------- routing: plain #names, so links can be shared and Back works ---------- */
+  const renderHome = () => h('div', { class: 'view' }, heroBlock(), pollBlock(), labBlock());
 
-  function routeFor(cell, gene) {
-    return gene ? `gene-${slug(cell.id)}-${slug(gene.symbol)}` : `cell-${slug(cell.id)}`;
-  }
+  /* ---------- view 2: the essay prize ---------- */
 
-  function buildRoutes() {
-    routes = new Map();
-    data.cellTypes.forEach((cell) => {
-      routes.set(routeFor(cell), { kind: 'cell', cell, gene: null });
-      genesOf(cell).forEach((gene) => routes.set(routeFor(cell, gene), { kind: 'gene', cell, gene }));
-      if (passageFor(cell)) routes.set('writeup-' + slug(cell.id), { kind: 'writeup', cell, gene: null });
+  const countWords = (t) => (String(t).trim().match(/\S+/g) || []).length;
+
+  function renderPrize() {
+    const p = data.prize;
+    const cfg = data.config || {};
+    const draft = store.get('essay') || {};
+    const sections = list(p.sections);
+    const total = h('p', { class: 'total', role: 'status' });
+    const areas = [];
+    let timer = 0;
+    const refresh = () => {
+      let sum = 0;
+      areas.forEach(({ sec, area, counter }) => { const c = countWords(area.value); sum += c; counter.textContent = fill(p.wordCount, { count: c, target: sec.target }); });
+      total.textContent = fill(p.totalCount, { count: sum });
+      total.classList.toggle('inrange', sum >= p.wordsMin && sum <= p.wordsMax);
+    };
+    const save = () => { clearTimeout(timer); timer = setTimeout(() => { const out = {}; areas.forEach(({ sec, area }) => { out[sec.id] = area.value; }); store.set('essay', out); }, 400); };
+    const builder = sections.map((sec, i) => {
+      const area = h('textarea', { id: 'essay-' + sec.id, rows: String(Math.max(4, Math.round((sec.target || 100) / 22))), 'aria-describedby': `essay-${sec.id}-hint essay-${sec.id}-count`, oninput: () => { refresh(); save(); } });
+      area.value = draft[sec.id] || '';
+      const counter = h('p', { class: 'small count', id: `essay-${sec.id}-count` });
+      areas.push({ sec, area, counter });
+      const field = h('div', { class: 'field' },
+        h('label', { for: 'essay-' + sec.id }, h('span', { class: 'qn', 'aria-hidden': 'true', text: String(i + 1) }), sec.label || sec.id),
+        h('p', { class: 'small', id: `essay-${sec.id}-hint`, text: sec.prompt || '' }), area, counter);
+      if (i === sections.length - 1 && list(p.checklist).length) {
+        return h('div', { class: 'withaside' }, field, h('aside', { class: 'card mini' }, heading(4, p.checklistHeading), h('ul', { class: 'ticks' }, list(p.checklist).map((c) => h('li', { text: c })))));
+      }
+      return field;
     });
+    const text = () => areas.map(({ sec, area }) => `${sec.label || sec.id}\n${area.value.trim()}`).join('\n\n');
+    const copy = isText(p.copyLabel) && h('button', { type: 'button', class: 'btn', onclick: (ev) => {
+      const btn = ev.currentTarget;
+      const fallback = () => { const a = areas.find((x) => x.area.value) || areas[0]; if (a) { a.area.focus(); a.area.select(); } btn.textContent = ui('copySelected'); };
+      try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text()).then(() => { btn.textContent = ui('copied'); }, fallback); else fallback(); } catch (e) { fallback(); }
+    } }, p.copyLabel);
+    const clear = isText(p.clearLabel) && h('button', { type: 'button', class: 'linkbtn', text: p.clearLabel, onclick: () => { areas.forEach(({ area }) => { area.value = ''; }); store.del('essay'); refresh(); } });
+    refresh();
+    const levels = list(p.rubricLevels);
+    const hasDeadline = isText(cfg.essayDeadline) && cfg.essayDeadline !== 'PLACEHOLDER';
+    return h('div', { class: 'view narrow' },
+      h('header', { class: 'pagehead' }, h('h1', { tabindex: '-1' }, fillNodes(p.heading)), para(p.intro, 'lede')),
+      list(p.rules).length > 0 && h('section', { class: 'prizecard flat' }, heading(2, p.rulesHeading), h('ul', { class: 'ticks' }, list(p.rules).map((r) => h('li', {}, fillNodes(r)))),
+        hasDeadline && para(p.deadlineLabel, 'small')),
+      sections.length > 0 && h('section', { class: 'stack' }, heading(2, p.builderHeading), para(p.builderIntro), para(p.originalityNote, 'small'),
+        h('div', { class: 'card essay stack' }, builder, total, h('div', { class: 'actions' }, copy, clear))),
+      isText(p.submitLabel) && h('section', { class: 'card stack' }, heading(2, p.submitHeading), paras(p.submitPrivacy, 'small'),
+        h('div', { class: 'actions' }, formButton(cfg.essayFormUrl, p.submitLabel, p.submitPending, 'essay-pending'))),
+      list(p.rubric).length > 0 && levels.length > 0 && h('section', { class: 'stack' }, heading(2, p.rubricHeading), para(p.rubricNote, 'small'),
+        h('div', { class: 'tablewrap' }, h('table', { class: 'rubric' },
+          h('thead', {}, h('tr', {}, h('th', { scope: 'col', text: p.rubricCriterionLabel || '' }), levels.map((l) => h('th', { scope: 'col', text: l })))),
+          h('tbody', {}, list(p.rubric).map((r) => h('tr', {}, h('th', { scope: 'row', text: r.criterion || '' }), levels.map((_, i) => h('td', { text: list(r.levels)[i] || '–' })))))))));
   }
 
-  function resolve(key) {
-    const none = { cell: null, gene: null };
-    if (routes.has(key)) return routes.get(key);
-    if (key === 'data' && stage('data')) return { kind: 'data', ...none };
-    if (key === 'mapping' && stage('mapping')) return { kind: 'mapping', ...none };
-    if (key === 'top') return { kind: 'analysis', ...none };
-    if (key === 'writeup' && hasWriteUp()) { const cell = headlineCell(); if (passageFor(cell)) return { kind: 'writeup', cell, gene: null }; }
-    if (key === 'challenge' && data.challenge) return { kind: 'challenge', ...none };
-    if (data.intro) return { kind: 'start', ...none };
-    return { kind: steps()[0].id, ...none };
+  /* ---------- view 3: UCAS and careers ---------- */
+
+  function renderUcas() {
+    const u = data.ucas;
+    return h('div', { class: 'view narrow' },
+      h('header', { class: 'pagehead' }, h('h1', { tabindex: '-1', text: u.heading || (data.nav || {}).ucas || '' }), para(u.intro, 'lede')),
+      (isText(u.weak) || isText(u.strong)) && h('section', { class: 'stack' }, heading(2, u.statementHeading), para(u.statementIntro),
+        h('div', { class: 'versus' },
+          isText(u.weak) && h('figure', { class: 'card weak' }, isText(u.weakLabel) && h('figcaption', { class: 'badge', text: u.weakLabel }), h('blockquote', { text: u.weak })),
+          isText(u.strong) && h('figure', { class: 'card strong' }, isText(u.strongLabel) && h('figcaption', { class: 'badge', text: u.strongLabel }), h('blockquote', { text: u.strong }))),
+        list(u.statementWhy).length > 0 && h('div', { class: 'stack' }, heading(3, u.statementWhyHeading), h('ul', { class: 'ticks' }, list(u.statementWhy).map((x) => h('li', { text: x })))),
+        para(u.statementWarning, 'callout')),
+      list(u.comp).length > 0 && h('section', { class: 'stack' }, heading(2, u.compHeading), paras(u.comp),
+        u.compLink && isUrl(u.compLink.url) && h('p', {}, linkOut(u.compLink.url, u.compLink.label || u.compLink.url, 'inline'))),
+      list(u.founder).length > 0 && h('section', { class: 'stack' }, heading(2, u.founderHeading),
+        h('blockquote', { class: 'founder' }, paras(u.founder), isText(u.founderSign) && h('footer', { text: u.founderSign }))));
   }
 
-  function renderJourney(target) {
-    const meta = data.meta || {};
-    const all = steps();
-    const here = stepOf(target.kind);
-    const hereIndex = all.findIndex((x) => x.id === here);
-    crumbs.replaceChildren(
-      h('a', { class: 'site', href: '#start', text: meta.shortTitle || meta.title || '' }),
-      h('ol', { class: 'journey' },
-        all.map((st, i) => {
-          const isHere = st.id === here;
-          const done = !isHere && (visited.has(st.id) || (hereIndex >= 0 && i < hereIndex));
-          return h('li', { class: (isHere ? 'here' : '') + (done ? ' done' : '') },
-            h('a', { href: '#' + st.route, 'aria-current': isHere ? 'step' : null },
-              h('span', { class: 'n', 'aria-hidden': 'true', text: done ? '✓' : String(i + 1) }),
-              h('span', { class: 'lbl', text: st.label }),
-              done && h('span', { class: 'sr', text: ` (${ui('stepDone')})` })));
-        }),
-        data.challenge && h('li', { class: 'side' + (here === 'challenge' ? ' here' : '') },
-          h('a', { href: '#challenge', 'aria-current': here === 'challenge' ? 'step' : null },
-            h('span', { class: 'n', 'aria-hidden': 'true', text: '★' }),
-            h('span', { class: 'lbl', text: data.challenge.navLabel || fill(data.challenge.heading, ctx()) })))));
+  /* ---------- view 4: for teachers ---------- */
+
+  function renderTeachers() {
+    const t = data.teachers;
+    const cfg = data.config || {};
+    return h('div', { class: 'view narrow' },
+      h('header', { class: 'pagehead' }, h('h1', { tabindex: '-1', text: t.heading || (data.nav || {}).teachers || '' }), para(t.intro, 'lede')),
+      list(t.value).length > 0 && h('section', { class: 'stack' }, heading(2, t.valueHeading), h('ul', { class: 'ticks' }, list(t.value).map((x) => h('li', { text: x })))),
+      list(t.curriculum).length > 0 && h('section', { class: 'stack' }, heading(2, t.curriculumHeading),
+        h('ul', { class: 'bento two' }, list(t.curriculum).map((c) => h('li', { class: 'card' },
+          h('h3', {}, isUrl(c.url) ? linkOut(c.url, c.spec || c.url, 'inline') : c.spec || ''), h('ul', { class: 'ticks' }, list(c.topics).map((x) => h('li', { text: x }))))))),
+      isText(t.sensitivity) && h('section', { class: 'stack' }, heading(2, t.sensitivityHeading), para(t.sensitivity)),
+      isText(t.packLabel) && h('section', { class: 'card stack' }, heading(2, t.packHeading), para(t.packBody),
+        h('div', { class: 'actions' }, formButton(cfg.teacherFormUrl, t.packLabel, t.packPending, 'pack-pending'),
+          isUrl(cfg.teacherPackUrl) && isText(t.packDownloadLabel) && linkOut(cfg.teacherPackUrl, t.packDownloadLabel, 'btn ghost'))),
+      list(t.code).length > 0 && h('section', { class: 'stack' }, heading(2, t.codeHeading), h('ol', { class: 'steps' }, list(t.code).map((x) => h('li', { text: x })))));
   }
 
-  function titleFor(target) {
-    const meta = data.meta || {};
-    const site = meta.shortTitle || meta.title || '';
-    const k = target.kind;
-    const page = k === 'gene' ? `${target.gene.symbol} — ${target.cell.label}`
-      : k === 'cell' ? target.cell.label
-      : k === 'writeup' ? `${(data.writeUp || {}).heading || ''} — ${target.cell.label}`
-      : k === 'challenge' ? fill(data.challenge.heading, ctx())
-      : k === 'start' ? (data.intro || {}).heading
-      : (stage(k) || {}).heading;
-    return [page, site].filter(isText).filter((x, i, arr) => arr.indexOf(x) === i).join(' — ');
+  /* ---------- shell: tabs, notice, footer, routing ---------- */
+
+  const TABS = ['home', 'prize', 'ucas', 'teachers'];
+  const availableTabs = () => TABS.filter((id) => id === 'home' || data[id]);
+
+  function renderNav() {
+    const nav = $('tabs');
+    nav.setAttribute('aria-label', ui('tabs'));
+    nav.replaceChildren(
+      h('a', { class: 'brand', href: '#home', text: data.meta.title || '' }),
+      h('ul', {}, availableTabs().map((id) => h('li', {}, h('a', { href: '#' + id, class: id === 'prize' ? 'tab prize' : 'tab', 'aria-current': state.tab === id ? 'page' : null, text: (data.nav || {})[id] || id })))));
+  }
+  function renderNotice() {
+    const n = $('notice');
+    if (!data.meta.PLACEHOLDER) { n.hidden = true; return; }
+    n.replaceChildren(h('p', { text: data.meta.placeholderNotice || 'PLACEHOLDER' }));
+    n.hidden = false;
+  }
+  function renderCredits() {
+    const m = data.meta;
+    const f = data.footer || {};
+    const line = (...kids) => { const real = kids.flat().filter(Boolean); return real.length ? h('p', {}, real) : null; };
+    const link = (text, url) => (isUrl(url) ? linkOut(url, text, 'inline') : text);
+    const source = [m.source, m.dataset].filter(isText).join(' — ');
+    $('credits').replaceChildren(h('div', {},
+      (source || isText(m.citation)) && line(isText(f.dataLabel) && f.dataLabel + ' ', source && link(source, m.sourceUrl), source && isText(m.citation) && '. ', isText(m.citation) && link(m.citation, m.citationUrl), '.'),
+      isText(m.licence) && line(isText(f.licenceLabel) && f.licenceLabel + ' ', link(m.licence, m.licenceUrl), '.'),
+      isText(m.accessed) && line(isText(f.accessedLabel) && f.accessedLabel + ' ', fmtDate(m.accessed), '.'),
+      isText(f.privacy) && line(f.privacy)));
   }
 
   function show() {
     const key = decodeURIComponent(location.hash.replace(/^#/, ''));
-    const target = resolve(key);
-    const previous = current;
-
-    const paint = () => {
-      const k = target.kind;
-      const heroId = k === 'analysis' && previous.kind === 'cell' && previous.cell ? previous.cell.id : null;
-      const view = k === 'start' ? renderStart()
-        : k === 'data' ? renderData()
-        : k === 'mapping' ? renderMapping()
-        : k === 'cell' ? renderCell(target.cell)
-        : k === 'gene' ? renderGene(target.cell, target.gene)
-        : k === 'writeup' ? renderWriteUp(target.cell, key)
-        : k === 'challenge' ? renderChallenge()
-        : renderChart(heroId);
-      main.replaceChildren(view);
-      visited.add(stepOf(k));
-      renderJourney(target);
-      document.title = titleFor(target);
-      current = { kind: k, cell: target.cell, gene: target.gene };
-
-      if (firstRender) { firstRender = false; return; }
-      if (heroId) {
-        const row = main.querySelector(`a.row[data-cell="${CSS.escape(heroId)}"]`);
-        if (row) { row.focus({ preventScroll: true }); row.scrollIntoView({ block: 'center' }); return; }
-      }
-      window.scrollTo(0, 0);
-      const heading = main.querySelector('h1');
-      if (heading) heading.focus({ preventScroll: true });
-    };
-
-    // Going from the chart into a row: name that row so it visibly opens rather than being replaced.
-    if (previous.kind === 'analysis' && target.kind === 'cell') {
-      const row = main.querySelector(`a.row[data-cell="${CSS.escape(target.cell.id)}"] .track`);
-      if (row) row.style.viewTransitionName = 'hero';
-    }
-    if (!firstRender && document.startViewTransition && !reducedMotion.matches) document.startViewTransition(paint);
-    else paint();
-  }
-
-  /* ---------- page furniture ---------- */
-
-  function renderNotice() {
-    const meta = data.meta || {};
-    const text = meta.placeholderNotice || meta.placeholderWarning || 'PLACEHOLDER';
-    if (!meta.PLACEHOLDER) { notice.hidden = true; return; }
-    notice.replaceChildren(h('p', { text }));
-    notice.hidden = false;
-  }
-
-  function renderCredits() {
-    const meta = data.meta || {};
-    const f = data.footer || {};
-    const line = (...kids) => { const real = kids.flat().filter(Boolean); return real.length ? h('p', {}, real) : null; };
-    const link = (text, url) => (isText(url) && /^https?:\/\//.test(url) ? h('a', { href: url, rel: 'noopener', text }) : text);
-    const source = [meta.source, meta.dataset].filter(isText).join(' — ');
-    credits.replaceChildren(h('div', {},
-      (source || isText(meta.citation)) && line(isText(f.dataLabel) && f.dataLabel + ' ', source, source && isText(meta.citation) && '. ', isText(meta.citation) && link(meta.citation, meta.citationUrl), '.'),
-      isText(meta.licence) && line(isText(f.licenceLabel) && f.licenceLabel + ' ', link(meta.licence, meta.licenceUrl), '.'),
-      isText(meta.accessed) && line(isText(f.accessedLabel) && f.accessedLabel + ' ', fmtDate(meta.accessed), '.'),
-      isText(meta.note) && line(meta.note),
-      isText(f.privacy) && line(f.privacy)));
+    const section = key === 'poll' || key === 'lab' ? key : null;
+    const tab = availableTabs().includes(key) ? key : 'home';
+    const first = state.tab === '';
+    const changed = tab !== state.tab;
+    state.tab = tab;
+    if (changed) main.replaceChildren(tab === 'prize' ? renderPrize() : tab === 'ucas' ? renderUcas() : tab === 'teachers' ? renderTeachers() : renderHome());
+    renderNav();
+    document.title = [tab === 'home' ? '' : (data.nav || {})[tab], data.meta.title].filter(isText).join(' — ');
+    if (section) { requestAnimationFrame(() => scrollToId(section)); return; }
+    if (first) return;
+    window.scrollTo(0, 0);
+    const h1 = main.querySelector('h1');
+    if (h1) h1.focus({ preventScroll: true });
   }
 
   function fail(message) {
-    main.replaceChildren(h('section', { class: 'view' },
-      h('h1', { text: UI.loadFailTitle }),
-      h('p', { class: 'lede', text: message }),
-      h('p', { text: UI.loadFailHelp })));
+    main.replaceChildren(h('div', { class: 'view narrow' }, h('h1', { text: UI.loadFailTitle }), h('p', { class: 'lede', text: message }), h('p', { text: UI.loadFailHelp })));
   }
 
   async function start() {
@@ -1172,47 +946,24 @@
       const res = await fetch(DATA_URL, { cache: 'no-cache' });
       if (!res.ok) throw new Error(`${DATA_URL}: ${res.status}`);
       data = await res.json();
-      if (!data || !Array.isArray(data.cellTypes) || data.cellTypes.length === 0) throw new Error(`${DATA_URL}: cellTypes`);
+      if (!data || typeof data !== 'object') throw new Error(DATA_URL);
+      data.meta = data.meta || {};
     } catch (err) {
       data = null;
       fail(err && err.message ? err.message : DATA_URL);
       return;
     }
-    crumbs.setAttribute('aria-label', ui('journey'));
-    buildRoutes();
+    const saved = store.get('poll');
+    if (saved && saved.answers && isNum(saved.score)) { state.poll.submitted = saved; state.poll.classCode = saved.classCode || ''; }
     renderNotice();
     renderCredits();
     show();
     window.addEventListener('hashchange', show);
-    window.addEventListener('load', () => setTimeout(warmImages, 1500));
-    if (document.readyState === 'complete') setTimeout(warmImages, 1500);
-    let resizeTimer = null;
-    let lastWidth = window.innerWidth;
-    window.addEventListener('resize', () => {
-      if (window.innerWidth === lastWidth) return;   // ignore mobile address-bar height changes
-      lastWidth = window.innerWidth;
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => { if (current.kind === 'analysis') main.replaceChildren(renderChart(null)); }, 200);
-    });
   }
 
-  // Fetch every picture the data file names once, so the offline cache holds them even if their screen was never opened.
-  function warmImages() {
-    if (!/^https?:$/.test(location.protocol) || navigator.onLine === false) return;
-    const found = new Set();
-    const walk = (node) => {
-      if (!node || typeof node !== 'object') return;
-      if (isText(node.src) && !/^[a-z]+:/i.test(node.src)) found.add(node.src);
-      Object.values(node).forEach(walk);
-    };
-    walk({ stages: data.stages, challenge: data.challenge });
-    found.forEach((src) => { fetch(src).catch(() => {}); });
-  }
-
-  // Offline support: the site's own files are cached so the page still opens with no network.
+  // Offline support: the site's own files are cached so it still opens with no network.
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
   }
-
   start();
 })();
