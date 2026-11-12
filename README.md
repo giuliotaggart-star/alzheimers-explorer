@@ -1,23 +1,31 @@
-# AlzExplore
+# Unravel
 
-Practice a university Alzheimer's research project. An interactive site that takes UK A-level Biology students from a warm-up poll, through guided simulations on donor-level brain-cell data, to their own question and an optional essay prize. It is the hands-on core of the free school workshop "Could you spot Alzheimer's?".
+A free site for UK A-level Biology students. It starts from a question about dementia, takes them through a six-statement poll, a short explanation of how dementia and Alzheimer's disease differ, five guided simulations on donor-level brain-cell data, and their own question to explore, then points to an optional essay prize.
 
-> **Status: built on placeholder data.** Every number in `data/seaad-mtg.json` is made up, and text marked `PLACEHOLDER` is waiting for a subject expert. The site shows a banner saying so until `meta.PLACEHOLDER` is removed. Leave it there until the checklist below is done.
+> **Status: built on placeholder data.** Every number in `data/seaad-mtg.json` is made up, and text marked `PLACEHOLDER` is waiting for a subject expert. There is no banner. Instead: (1) the footer carries `footer.buildNote` while `meta.PLACEHOLDER` is true; (2) open any page with `#check` on the end of the address (for example `index.html#check`) and every piece of text still saying `PLACEHOLDER` is outlined, with a count in the corner; (3) the checker keeps warning. **Do not send the link to students until `meta.PLACEHOLDER` is gone from the data file, and run the checker before every push.**
 
-## What is on the site
+## The journey
 
-| Tab | Address | What it does |
+The home page is six full-height sections, each with one job and one way on. Their order, names and numbers come from `sections` in the data file; remove one and the rest renumber themselves, and its rail dot and deep link go too.
+
+| # | Address | Job |
 |---|---|---|
-| Home journey | `#home` (also `#poll`, `#lab`) | Hero, the six-statement warm-up poll, then the Data Lab |
-| £50 essay prize | `#prize` | Rules, a claim–evidence–reasoning essay builder with word counts, a link out to the entry form, the marking rubric |
-| UCAS & careers | `#ucas` | Weak vs strong project sentence, what computational biology is, a founder's note |
-| For teachers | `#teachers` | What the lesson needs, AQA and OCR links, the teacher-pack request, how class codes work |
+| 001 | `#question` | The human question about dementia, one line on what to do, one button |
+| 002 | `#poll` | The six statements one at a time, no feedback until the end, then the result in the same card |
+| 003 | `#pivot` | The dark screen: the poll's hinge statement, dementia vs Alzheimer's disease, three nested rings, then into the lab |
+| 004 | `#lab` | A carousel of the five simulations, then the four steps of one (predict, observe, stress-test, takeaway) |
+| 005 | `#explore` | Three launchpads and the "Show me how … changes across … in …" sentence; save a snapshot card |
+| 006 | `#further` | The prize card, then two quiet doors (UCAS and careers, For teachers) |
 
-**The Data Lab** has two stages. *Guided simulations*: five case studies, each in four steps (predict, observe, stress-test confounders, takeaway). *Solo Explore*: three launchpads and a "Show me how … changes across … in …" sentence builder, with a downloadable snapshot card. Every chart is one dot per donor with an optional median and interquartile-range overlay, and every chart exports as a PNG. A switch swaps research terms for A-level terms everywhere.
+The other pages: `#prize` (submit link, four-box claim–evidence–reasoning builder with a running word-count bar, rubric, rules), `#ucas`, `#teachers`.
+
+**Language split.** The name, hero, poll and 003 say *dementia*. From 003 on, *Alzheimer's* is the disease in the data. The only place the lab says *dementia* is the cognitive-status labels. The A-level translator may simplify a term but never swap the disease; the checker enforces it.
+
+Every chart is one dot per donor, with an optional median and interquartile box, a zero-based axis, and a colour that runs from `--ink-2` to `--deep` across the groups. The accent colour (Burning Flame) is used only for the prize card and its bridge, the "you" tick in the poll result, and the thread down the left edge.
 
 ## Everything is in one file
 
-Every sentence, number, unit, colour and address is read from `data/seaad-mtg.json`. To finish or change the site you edit that file; you do not touch the code. Leave a field out and its part of the page disappears; leave a whole section out (`prize`, say) and its tab disappears.
+Every sentence, number, unit, colour and address is read from `data/seaad-mtg.json`. To finish or change the site you edit that file; you do not touch the code. Leave a field out and its part of the page disappears; leave a whole section out (`prize`, say) and its link disappears.
 
 Sentences can quote live values with tokens such as `{{medianFirst}}`. A mistyped token shows on the page, highlighted. Every number needs a unit: if one is missing the page prints `[unit missing]`.
 
@@ -37,24 +45,24 @@ python3 notebook/validate_contract.py data/seaad-mtg.json
 | `cellTypes[]`, `metrics[]` | Labels, A-level labels, colours; each metric has a `unit` and `decimals` |
 | `series[]` | The numbers: `{metric, cellType, values}` where `values` lines up one to one with `donors` |
 | `caseStudies[]` | The five simulations: which series, which grouping, the prediction question, the takeaway passage |
-| `map.points` | About 3,000 cells for the sorting map, as `{"<cell type id>": [[x, y], …]}` |
 
 ## What is left to fill in
 
-- [ ] Run the real analysis and replace `donors`, `series`, `map.points` (see `notebook/README.md`)
+- [ ] Run the real analysis and replace `donors` and `series` (see `notebook/README.md`)
 - [ ] `metrics[].unit` for gene activity (still "PLACEHOLDER units")
 - [ ] `poll.items[].benchmark`: check each percentage against the results table in Hassan et al. (2026); then tidy `poll.benchmarkSource`
-- [ ] `poll.decoders[1]`: one expert sentence on selective vulnerability
-- [ ] `lab.originBody`, map captions, launchpad blurbs
+- [ ] `hero.question` and `hero.description`; `pivot.body` (your two sentences); `pivot.handoff`; `poll.resultGap`; `sections[].name`; `further.doors[].line`; `further.prize.bodyAfterWork`
+- [ ] `pivot.decoders[1]`: one expert sentence on selective vulnerability
+- [ ] Launchpad blurbs
 - [ ] `caseStudies[]`: each brief, each takeaway passage, model claim and limitation. These state findings, so they wait for real data
 - [ ] `prize`: who can enter, deadline, judging, privacy line; confirm the draft rubric
 - [ ] `ucas.founder`: your note
 - [ ] `teachers.code[3]`: how a teacher asks for their class results
 - [ ] `config`: `essayFormUrl`, `teacherFormUrl`, `teacherPackUrl`, `essayDeadline`, and `pollEndpoint` if you want class results collected
 - [ ] `LICENCE`: paste in the full CC BY-NC 4.0 text
-- [ ] Remove `meta.PLACEHOLDER` last
+- [ ] Remove `meta.PLACEHOLDER` last (it also removes the footer build note)
 
-Sentences already written for you to read through: `hero`, `poll` (framing, decoder cards 1 and 3), `lab.cheats`, `terms`, `prize` (rules, prompts, rubric), `ucas` (everything but the founder's note), `teachers`.
+Sentences already written for you to read through: `poll`, `pivot` (heading, rings, decoder cards 1 and 3), `lab.cheats`, `terms`, `prize` (rules, prompts, rubric), `ucas` (everything but the founder's note), `teachers`.
 
 ## Privacy: what this site does and does not do
 
@@ -70,7 +78,7 @@ Sentences already written for you to read through: `hero`, `poll` (framing, deco
 python3 -m http.server 8000
 ```
 
-Then open http://localhost:8000. Opening `index.html` straight from the folder will not work.
+Then open http://localhost:8000. Opening `index.html` straight from the folder will not work. Add `#check` to the address to see what is still unwritten.
 
 ## Publish on GitHub Pages
 
@@ -86,7 +94,7 @@ No build step. The service worker is network-first: with a connection, students 
 index.html                     the page shell
 assets/app.css                 styles
 assets/app.js                  all behaviour; no dependencies; no subject content
-assets/fonts/                  Instrument Serif and Plus Jakarta Sans (SIL Open Font License)
+assets/fonts/                  Instrument Serif and Plus Jakarta Sans (SIL Open Font License); no outside fonts
 data/seaad-mtg.json            everything the site says and shows
 notebook/                      outline of the analysis, and the data checker
 sw.js                          offline support

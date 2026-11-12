@@ -2,13 +2,13 @@
    are always fetched, so a classroom sees an update straight away. The cached copy is used only when the
    network is gone. Only this site's own files are ever cached; forms and every other outside address are
    left alone, and nothing about the visitor is held here. Bump CACHE when files are renamed or removed. */
-const CACHE = 'alzexplore-v3-5';
+const CACHE = 'unravel-v4';
 const FILES = [
   './',
   'index.html',
   'assets/app.css',
   'assets/app.js',
-  'assets/fonts/fredoka-latin-wght-normal.woff2',
+  'assets/fonts/instrument-serif-latin-400-normal.woff2',
   'assets/fonts/plus-jakarta-sans-latin-wght-normal.woff2',
   'data/seaad-mtg.json',
 ];

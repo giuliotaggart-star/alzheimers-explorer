@@ -1,4 +1,4 @@
-/* AlzExplore — all behaviour. No dependencies, no build step.
+/* Unravel — all behaviour. No dependencies, no build step.
    Every word of subject content, every number, unit, colour and address is read from data/seaad-mtg.json.
    The only English in this file is page furniture (UI below); the data file's optional "ui" object overrides it.
    Each view is a plain function from (data, state) to DOM, so it ports to a component framework one function at a time.
@@ -9,117 +9,26 @@
 
   const DATA_URL = 'data/seaad-mtg.json';
   const UI = {
-    tabs: 'Sections', newTab: '(opens in a new tab)', unitMissing: '[unit missing]',
+    site: 'Site', more: 'More', prevCard: 'Previous simulation', nextCard: 'Next simulation', newTab: '(opens in a new tab)', unitMissing: '[unit missing]',
     showAnswer: 'Show me the answer', tried: 'tried', copied: 'Copied', copySelected: 'Selected — copy it with your device',
     you: 'you', step: 'Step', modelAnswer: 'Show a model answer', nextCase: 'Next simulation',
-    skipPoll: 'Skip poll', pollSkipped: 'Poll skipped. You can still take it any time.', takePoll: 'Take the poll instead',
-    stageOf: 'Stage', stageNames: ['Warm-Up Poll', 'Guided Simulations', 'Solo Explore'], simShort: 'Sim', simLong: 'Simulation',
-    soloCta: 'Ready to test your own question?', soloGo: 'Go to Solo Explore',
-    toStart: 'back to the start', loadFailTitle: 'The data did not load',
+    loadFailTitle: 'The data did not load',
     loadFailHelp: 'If you opened this page straight from a folder, serve the folder instead: run “python3 -m http.server” in it and open http://localhost:8000.',
   };
   const ui = (k) => (data && data.ui && data.ui[k]) || UI[k];
 
-  /* Plain-English wording. It is laid over the data file when the page loads, so data/seaad-mtg.json itself stays untouched.
-     Objects merge key by key; lists and strings replace what the data file has. */
-  const COPY = {
-    nav: { prize: '£50 Essay Prize', ucas: 'UCAS & Careers', teachers: 'For Teachers' },
-    hero: {
-      title: 'AlzExplore',
-      description: 'Dig into real brain-cell data from people with Alzheimer’s. Spot the pattern yourself and think like a scientist.',
-      cta: 'Start Warm-Up Poll',
-      prize: {
-        badge: '{{prizeValue}} Essay Prize',
-        heading: 'Found a pattern? Turn it into a {{prizeValue}} essay.',
-        body: 'Write {{wordsMin}}–{{wordsMax}} words about what you just discovered. Every entry gets personal feedback. Winners get a {{prizeValue}} voucher.',
-        cta: 'See how to enter',
-      },
-    },
-    poll: {
-      heading: 'Warm-up poll',
-      framing: 'Six quick true-or-false questions about Alzheimer’s. Can you beat the average teenager?',
-      classCodeHint: 'Your teacher may give you a code, like BIOL-12. Working alone? Leave it blank.',
-      privacyLocal: 'Your answers stay on this device.',
-      privacyShared: 'Your six answers and class code go to the workshop organiser. No name. No email.',
-      resultCompare: 'The average teenager in the study got {{benchmarkMean}} right.',
-      decodersHeading: 'Three ideas to take with you',
-      decoders: [
-        { title: 'Dementia is the symptoms. Alzheimer’s is one cause.', body: 'Dementia means memory loss and confusion that get in the way of daily life. Alzheimer’s disease is the most common cause of it.' },
-        { title: 'Some brain cells are hit harder than others', body: 'The brain has many cell types. A disease can change some a lot and others barely at all. Which ones? That is your big question.' },
-        { title: 'Reading genes, one cell at a time', body: 'Every cell has the same DNA, but each cell type switches on different genes. Counting the mRNA in one nucleus shows which genes are on, and what type of cell it is.' },
-      ],
-      labCta: 'Continue to Guided Simulations',
-    },
-    lab: {
-      heading: 'The Data Lab',
-      intro: 'Every dot is one person who donated their brain to research. Try the guided simulations first. Then explore on your own.',
-      originHeading: 'Where do these dots come from?',
-      originBody: ['Each dot is one cell from a donated brain. We measured {{cellsTotal}} from {{donorTotal}}. Press the button to sort them by cell type.'],
-      mapAlt: 'A cloud of dots. Mixed up at first, they sort into groups of coloured dots, one colour for each cell type.',
-      captionUnsorted: 'All the cells, mixed together.',
-      captionSorted: 'The same cells, grouped by type.',
-      modeGuided: 'Guided Simulations',
-      modeSandbox: 'Solo Explore',
-      overlayLabel: 'Show median & IQR',
-      cheatHeading: 'Skills cheat-sheet',
-      dotNote: '1 dot = 1 donor. The thick line is the median. The box shows the middle half of donors (the IQR).',
-      cheats: [
-        { title: 'Correlation is not causation', body: 'Two things moving together does not mean one causes the other.' },
-        { title: 'Sample size', body: 'Check the n under each group. Few donors means a shaky pattern.' },
-        { title: 'Confounders', body: 'Age, sex or genes could explain a difference too. Split the data and see if the pattern holds.' },
-        { title: 'Post-mortem tissue', body: 'Each brain is measured once, after death. You never see one person change over time.' },
-        { title: 'mRNA is not protein', body: 'More mRNA often means more protein, but not always.' },
-      ],
-      stressIntro: 'Groups can differ in more than disease stage. Pick a variable and split every group by it. Does the pattern survive?',
-      stressCountsNote: 'If one column is mostly one kind of donor, that variable is tangled up with the groups.',
-      observeMatch: 'The median is {{trend}} in the last group than the first. That matches your prediction.',
-      observeMiss: 'The median is {{trend}} in the last group than the first. You predicted {{prediction}}. A wrong prediction is useful: it shows what to look at again.',
-      observeNoPrediction: 'The median is {{trend}} in the last group than the first.',
-      sandboxIntro: 'No task and no marks. Pick a launchpad or build your own question.',
-      toSandbox: 'Go to Solo Explore',
-      snapshotBridge: 'Found something interesting? Turn it into a {{prizeValue}} essay entry',
-    },
-    prize: {
-      intro: 'Turn any finding from the Data Lab into a short essay.',
-      builderIntro: 'Four boxes. One for each part of a scientific argument. Your draft saves on this device only.',
-      submitHeading: 'Submit your essay',
-      submitPrivacy: ['The entry form is on another website, not this one.', 'It asks for your name, email, school, class code, how confident you feel about a STEM degree, and your essay.', 'PLACEHOLDER: who sees entries, how long they are kept, and what under-16s need to do.'],
-    },
-    ucas: {
-      intro: 'Nobody is born knowing how university applications work. Here is what people rarely say out loud.',
-      statementIntro: 'Admissions tutors want to know what you did and what you learned. “I found it interesting” does not tell them.',
-      statementWhy: ['It names the data and the method.', 'It says exactly what was analysed.', 'It ends on a skill, not a feeling.'],
-      statementWarning: 'Do not copy this sentence. UCAS checks every application for matching text. Write about what you actually did, in your own words.',
-      comp: [
-        'Biomedical research is not only lab coats and pipettes. A lot of it happens on a computer.',
-        'Computational biologists write code to find patterns in huge biological datasets, like the one on this site. The same skills power bioinformatics, health data science and AI in healthcare.',
-        'You can get there from biology, biochemistry, biomedical science, maths, computer science or physics. Entry requirements differ, so check each course on UCAS.',
-      ],
-    },
-    teachers: {
-      intro: 'A free 50-minute workshop on Alzheimer’s and gene expression for Year 12 and 13, built on real research data.',
-      value: ['Runs in the browser on a school Chromebook. No accounts. Nothing to install.', 'Keeps working if the school Wi-Fi drops.', 'One lesson: warm-up poll, guided simulations, then solo exploring.', 'The essay prize is optional follow-up work.'],
-      sensitivity: 'Some students care for, or have lost, someone with dementia. Tell the class the topic beforehand and say where support is in school.',
-    },
-  };
-  const merge = (base, over) => {
-    if (!over || typeof over !== 'object' || Array.isArray(over)) return over;
-    const out = Object.assign({}, base && typeof base === 'object' && !Array.isArray(base) ? base : {});
-    for (const [k, v] of Object.entries(over)) out[k] = merge(out[k], v);
-    return out;
-  };
-
   const $ = (id) => document.getElementById(id);
   const main = $('main');
+  const api = {};         // per-section keyboard handlers, filled in as the sections are built
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let data = null;
 
   const state = {
-    tab: '', plain: false, overlay: true, stage: 1,
-    caseId: null, step: 0, view: 0, predictions: {}, strat: {},
+    tab: '', cur: null, plain: false, overlay: true,
+    caseId: null, car: 0, step: 0, view: 0, predictions: {}, strat: {}, didWork: false,
     sandbox: null, snapshotMade: false,
-    cloze: new Map(), map: { sorted: false, focus: null },
-    poll: { answers: {}, classCode: '', submitted: null, skipped: false },
+    cloze: new Map(),
+    poll: { answers: {}, classCode: '', submitted: null, index: 0, phase: 'ask' },
   };
 
   /* ---------- helpers ---------- */
@@ -173,9 +82,9 @@
 
   // Device storage, used only for the poll result and the essay draft. Fails quietly where storage is blocked.
   const store = {
-    get(k) { try { return JSON.parse(localStorage.getItem('alzexplore.' + k)); } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem('alzexplore.' + k, JSON.stringify(v)); } catch (e) { /* storage blocked: carry on in memory */ } },
-    del(k) { try { localStorage.removeItem('alzexplore.' + k); } catch (e) { /* nothing to clear */ } },
+    get(k) { try { return JSON.parse(localStorage.getItem('unravel.' + k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('unravel.' + k, JSON.stringify(v)); } catch (e) { /* storage blocked: carry on in memory */ } },
+    del(k) { try { localStorage.removeItem('unravel.' + k); } catch (e) { /* nothing to clear */ } },
   };
 
   /* ---------- tokens: sentences in the data quote live values ---------- */
@@ -320,18 +229,18 @@
     const H = narrow ? 320 : 400;
     const font = narrow ? 11 : 13;
     const m = { l: narrow ? 40 : 52, r: 12, t: 30, b: narrow ? 54 : 58 };
-    const ink = css('--ink', '#0F172A');
-    const soft = css('--body', '#334155');
-    const grid = css('--rule', '#E5E0F5');
-    const teal = css('--teal', '#0D9488');
-    const crimson = css('--crimson', '#BE123C');
+    const ink = css('--ink', '#1B2632');
+    const soft = css('--ink-2', '#2C3B4D');
+    const grid = css('--muted', '#C9C1B1');
+    const lo = css('--ink-2', '#2C3B4D');   // low end of the data scale; the high end is --deep
+    const hi = css('--deep', '#A35139');
     const axis = niceAxis(Q.max * 1.05);
     const Y = (v) => m.t + (1 - v / axis.max) * (H - m.t - m.b);
     const band = (W - m.l - m.r) / Math.max(1, Q.groups.length);
     const family = '"Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Arial, sans-serif';
     const svg = s('svg', { xmlns: SVG_NS, viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'font-family': family, 'font-size': font,
       'aria-label': [label(Q.metric), label(Q.cell), label(Q.grouping)].filter(Boolean).join(', ') });
-    svg.append(s('rect', { width: W, height: H, fill: '#FFFFFF' }));
+    svg.append(s('rect', { width: W, height: H, fill: css('--surface', '#FFFFFF') }));
     svg.append(s('text', { x: 4, y: 14, fill: soft, 'font-weight': 600 }, `${label(Q.metric)} (${Q.unit || ui('unitMissing')})`));
     axis.ticks.forEach((t) => {
       svg.append(s('line', { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: t === 0 ? soft : grid, 'stroke-width': t === 0 ? 1.5 : 1 }));
@@ -340,7 +249,7 @@
     const r = narrow ? 3.4 : 4.4;
     Q.groups.forEach((g, gi) => {
       const x0 = m.l + gi * band;
-      const colour = Q.groups.length > 1 ? mix(teal, crimson, gi / (Q.groups.length - 1)) : teal;
+      const colour = Q.groups.length > 1 ? mix(lo, hi, gi / (Q.groups.length - 1)) : lo;
       const lanes = g.parts || [Object.assign({ stratum: null }, g)];
       const laneW = (band * 0.84) / lanes.length;
       lanes.forEach((lane, li) => {
@@ -369,7 +278,7 @@
     if (!Q.conf) return null;
     return h('p', { class: 'legend' }, h('b', { text: Q.conf.label + ': ' }), Q.strata.map((st, i) => {
       const svg = s('svg', { viewBox: '0 0 16 16', width: 14, height: 14, 'aria-hidden': 'true' });
-      svg.append(marker(i % 3, 8, 8, 5, { fill: css('--body', '#334155') }));
+      svg.append(marker(i % 3, 8, 8, 5, { fill: css('--ink-2', '#2C3B4D') }));
       return h('span', {}, svg, st);
     }));
   }
@@ -436,13 +345,13 @@
     const canvas = h('canvas', { width: Wc * 2, height: Hc * 2 });
     const g = canvas.getContext('2d');
     g.scale(2, 2);
-    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, Wc, Hc);
-    const ink = css('--ink', '#0F172A');
-    const soft = css('--body', '#334155');
+    g.fillStyle = css('--bg', '#EEE9DF'); g.fillRect(0, 0, Wc, Hc);
+    const ink = css('--ink', '#1B2632');
+    const soft = css('--ink-2', '#2C3B4D');
     const sans = '"Plus Jakarta Sans", system-ui, Arial, sans-serif';
     let y = pad;
     if (withStats) {
-      g.fillStyle = css('--plum', '#4C1D95'); g.font = `700 15px ${sans}`;
+      g.fillStyle = ink; g.font = `700 15px ${sans}`;
       g.fillText([data.meta.title, lab.snapshotTitle].filter(isText).join(' · ').toUpperCase(), pad, y + 12); y += 60;
     }
     g.fillStyle = ink; g.font = `600 24px ${sans}`;
@@ -452,43 +361,80 @@
     if (withStats) {
       const cols = lab.tableColumns || {};
       const unit = Q.unit || ui('unitMissing');
-      const xs = [pad, pad + 360, pad + 480, pad + 720];
+      const heads = [label(Q.grouping), cols.n || donorUnit() || '', `${cols.median || ''} (${unit})`, `${cols.iqr || ''} (${unit})`];
+      const rows = Q.groups.map((gr) => [gr.name, String(gr.n), gr.n ? num(gr.median, Q.dec + 1) : '–', gr.n ? `${num(gr.q1, Q.dec + 1)} to ${num(gr.q3, Q.dec + 1)}` : '–']);
+      // Each column is as wide as its widest cell plus a gap, so columns can never run into each other.
+      const widths = heads.map((t, i) => { g.font = `700 14px ${sans}`; let w = g.measureText(t).width; g.font = `400 14px ${sans}`; rows.forEach((r) => { w = Math.max(w, g.measureText(r[i]).width); }); return w; });
+      const gapX = Math.max(16, Math.min(40, (Wc - 2 * pad - widths.reduce((a, w) => a + w, 0)) / (heads.length - 1)));
+      const xs = widths.reduce((acc, w, i) => { acc.push(i ? acc[i - 1] + widths[i - 1] + gapX : pad); return acc; }, []);
       g.font = `700 14px ${sans}`; g.fillStyle = ink;
-      [label(Q.grouping), cols.n || donorUnit() || '', `${cols.median || ''} (${unit})`, `${cols.iqr || ''} (${unit})`].forEach((t, i) => g.fillText(t, xs[i], y + 14));
+      heads.forEach((t, i) => g.fillText(t, xs[i], y + 14));
       y += 30; g.font = `400 14px ${sans}`;
-      Q.groups.forEach((gr) => {
-        [gr.name, String(gr.n), gr.n ? num(gr.median, Q.dec + 1) : '–', gr.n ? `${num(gr.q1, Q.dec + 1)} to ${num(gr.q3, Q.dec + 1)}` : '–'].forEach((t, i) => g.fillText(t, xs[i], y + 14));
-        y += 30;
-      });
+      rows.forEach((r) => { r.forEach((t, i) => g.fillText(t, xs[i], y + 14)); y += 30; });
       y += 10;
     }
     g.fillStyle = soft; g.font = `400 13px ${sans}`;
     y = wrapText(g, [lab.dotNote, sourceLine()].filter(isText).join(' '), pad, y + 16, Wc - 2 * pad, 18);
-    if (data.meta.PLACEHOLDER) { g.fillStyle = css('--crimson', '#BE123C'); g.font = `700 13px ${sans}`; wrapText(g, data.meta.placeholderNotice || 'PLACEHOLDER', pad, y + 4, Wc - 2 * pad, 18); }
+    if (data.meta.PLACEHOLDER) { g.fillStyle = css('--deep', '#A35139'); g.font = `700 13px ${sans}`; wrapText(g, data.meta.placeholderNotice || 'PLACEHOLDER', pad, y + 4, Wc - 2 * pad, 18); }
     return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
   }
-  const fileStem = (Q) => ['alzexplore', Q.q.metric, Q.q.cellType, Q.q.grouping].filter(Boolean).join('-').toLowerCase().replace(/[^a-z0-9-]+/g, '-');
+  const fileStem = (Q) => ['unravel', Q.q.metric, Q.q.cellType, Q.q.grouping].filter(Boolean).join('-').toLowerCase().replace(/[^a-z0-9-]+/g, '-');
 
   /* ---------- reusable blocks ---------- */
 
-  function chartBlock(Q) {
+  const charts = new Set();
+  const repaintCharts = () => charts.forEach((c) => { if (c.holder.isConnected) c.paint(); else charts.delete(c); });
+  // Swap content with a view transition where the browser has one, and plainly where it does not.
+  function swap(fn) {
+    if (document.startViewTransition && !reducedMotion.matches) {
+      const y = window.scrollY;
+      try {
+        const t = document.startViewTransition(fn);
+        const keep = () => window.scrollTo(window.scrollX, y);
+        t.ready.catch(() => {}); t.updateCallbackDone.then(keep, () => {}); t.finished.then(keep, () => {});
+        return;
+      } catch (e) { /* fall through to a plain swap */ }
+    }
+    fn();
+  }
+  // Repaint a panel in place: pin its height and the scroll position so the page never jumps.
+  function keepScroll(box, fn) {
+    const y = window.scrollY;
+    box.style.minHeight = box.offsetHeight + 'px';
+    fn();
+    window.scrollTo(window.scrollX, y);
+    requestAnimationFrame(() => { window.scrollTo(window.scrollX, y); box.style.minHeight = ''; });
+  }
+  const qlink = (text, onclick, attrs) => h('button', Object.assign({ type: 'button', class: 'qlink', onclick }, attrs || {}), text);
+  const arrow = (ch) => h('span', { class: 'arr', 'aria-hidden': 'true', text: ch });
+  const focusIn = (box, key) => { if (!key) return; const t = box.querySelector(`[data-k="${key}"]`); if (t) t.focus({ preventScroll: true }); };
+
+  function chartBlock(Q, opts) {
     const lab = data.lab || {};
     const holder = h('div', { class: 'chart' });
-    const paint = () => holder.replaceChildren(drawChart(Q, holder.clientWidth || main.clientWidth - 32));
+    const paint = () => holder.replaceChildren(drawChart(Q, holder.clientWidth || Math.max(280, main.clientWidth - 32)));
+    charts.add({ holder, paint });
     requestAnimationFrame(paint);
     if ('ResizeObserver' in window) {
       let lastW = 0;
       new ResizeObserver(() => { const w = holder.clientWidth; if (holder.isConnected && w && Math.abs(w - lastW) > 8) { lastW = w; paint(); } }).observe(holder);
     }
+    const tableBox = opts && opts.table === false ? null : h('div', { class: 'tablebox', hidden: true }, statsTable(Q));
     return h('figure', { class: 'plot' },
       h('figcaption', { class: 'plot-title' }, questionText(Q)),
       Q.q.filter && para(Q.q.filter.note, 'small'),
       holder,
       strataLegend(Q),
-      para(lab.dotNote, 'small'),
-      h('div', { class: 'plot-tools' },
-        isText(lab.exportLabel) && h('button', { type: 'button', class: 'btn ghost', 'data-k': 'export', onclick: async () => { try { saveBlob(await composeCard(Q, false), fileStem(Q) + '.png'); } catch (e) { /* the picture could not be made on this device */ } } }, lab.exportLabel)),
-      isText(lab.tableLabel) && h('details', { class: 'drawer slim' }, h('summary', { text: lab.tableLabel }), statsTable(Q)));
+      para(lab.dotNote, 'small soft'),
+      h('div', { class: 'qlinks' },
+        isText(lab.overlayLabel) && qlink(lab.overlayLabel, () => {
+          state.overlay = !state.overlay;
+          document.querySelectorAll('[data-k="overlay"]').forEach((b) => b.setAttribute('aria-pressed', String(state.overlay)));
+          repaintCharts();
+        }, { 'data-k': 'overlay', 'aria-pressed': String(state.overlay) }),
+        tableBox && isText(lab.tableLabel) && qlink(lab.tableLabel, (ev) => { tableBox.hidden = !tableBox.hidden; ev.currentTarget.setAttribute('aria-expanded', String(!tableBox.hidden)); }, { 'aria-expanded': 'false' }),
+        isText(lab.exportLabel) && qlink(lab.exportLabel, async () => { try { saveBlob(await composeCard(Q, false), fileStem(Q) + '.png'); } catch (e) { /* the picture could not be made on this device */ } }, { 'data-k': 'export' })),
+      tableBox);
   }
 
   // A passage with gaps: choose the right words. Every gap has "Show me the answer"; nothing is locked.
@@ -543,103 +489,6 @@
     return box;
   }
 
-  // The map of cells the site draws itself: a grey jumble that sorts into coloured types.
-  function mapBlock() {
-    const lab = data.lab || {};
-    const src = (data.map && data.map.points) || null;
-    if (!src || typeof src !== 'object') return null;
-    const groups = [];
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const [id, pts] of Object.entries(src)) {
-      const clean = list(pts).filter((p) => Array.isArray(p) && isNum(p[0]) && isNum(p[1]));
-      if (!clean.length) continue;
-      clean.forEach((p) => { minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]); minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]); });
-      groups.push({ id, cell: cellOf(id), pts: clean });
-    }
-    if (!groups.length) return null;
-    let seed = 20261112;
-    const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-    const M = 0.07;
-    groups.forEach((g) => {
-      g.sorted = g.pts.map((p) => [M + ((p[0] - minX) / (maxX - minX || 1)) * (1 - 2 * M), 1 - (M + ((p[1] - minY) / (maxY - minY || 1)) * (1 - 2 * M))]);
-      g.mixed = g.pts.map(() => { const r = 0.4 * Math.sqrt(rand()); const t = rand() * Math.PI * 2; return [0.5 + r * Math.cos(t), 0.5 + r * Math.sin(t)]; });
-      g.delay = g.pts.map(() => rand() * 0.35);
-    });
-    const canvas = h('canvas', { role: 'img', 'aria-label': lab.mapAlt || '' });
-    const caption = h('p', { class: 'small', role: 'status', 'aria-live': 'polite' });
-    const toggle = h('button', { type: 'button', class: 'btn ghost', 'data-k': 'mapsort' });
-    let t = state.map.sorted ? 1 : 0;
-    const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
-    const draw = () => {
-      const ratio = window.devicePixelRatio || 1;
-      const w = canvas.clientWidth;
-      const hgt = canvas.clientHeight;
-      if (!w || !hgt) return;
-      if (canvas.width !== Math.round(w * ratio) || canvas.height !== Math.round(hgt * ratio)) { canvas.width = Math.round(w * ratio); canvas.height = Math.round(hgt * ratio); }
-      const g2 = canvas.getContext('2d');
-      g2.setTransform(ratio, 0, 0, ratio, 0, 0);
-      g2.clearRect(0, 0, w, hgt);
-      const r = Math.max(1.3, Math.min(w, hgt) / 200);
-      const pass = (g, colour, alpha) => {
-        if (alpha <= 0.004) return;
-        g2.globalAlpha = alpha; g2.fillStyle = colour; g2.beginPath();
-        for (let i = 0; i < g.pts.length; i += 1) {
-          const k = ease(Math.min(1, Math.max(0, (t - g.delay[i]) / 0.65)));
-          const x = (g.mixed[i][0] + (g.sorted[i][0] - g.mixed[i][0]) * k) * w;
-          const y = (g.mixed[i][1] + (g.sorted[i][1] - g.mixed[i][1]) * k) * hgt;
-          g2.moveTo(x + r, y); g2.arc(x, y, r, 0, Math.PI * 2);
-        }
-        g2.fill();
-      };
-      for (const g of groups) {
-        const focused = state.map.focus === g.id;
-        const dim = state.map.focus && !focused ? 0.2 : 1;
-        const tint = !g.cell ? 0 : focused ? 1 : ease(Math.min(1, t * 1.4));
-        pass(g, css('--body', '#334155'), 0.5 * (1 - tint) * dim);
-        if (g.cell) pass(g, colourOf(g.cell), 0.85 * tint * dim);
-      }
-      g2.globalAlpha = 1;
-    };
-    const sync = () => {
-      toggle.textContent = (state.map.sorted ? lab.unsortLabel : lab.sortLabel) || '';
-      toggle.hidden = !toggle.textContent;
-      caption.textContent = (state.map.sorted ? lab.captionSorted : lab.captionUnsorted) || '';
-      caption.hidden = !caption.textContent;
-    };
-    let raf = 0;
-    toggle.addEventListener('click', () => {
-      state.map.sorted = !state.map.sorted; sync();
-      cancelAnimationFrame(raf);
-      const target = state.map.sorted ? 1 : 0;
-      if (reducedMotion.matches) { t = target; draw(); return; }
-      const from = t;
-      const began = performance.now();
-      const tick = (now) => { if (!canvas.isConnected) return; const k = Math.min(1, (now - began) / 1500); t = from + (target - from) * k; draw(); if (k < 1) raf = requestAnimationFrame(tick); };
-      raf = requestAnimationFrame(tick);
-    });
-    sync();
-    if ('ResizeObserver' in window) new ResizeObserver(() => { if (canvas.isConnected) draw(); }).observe(canvas);
-    requestAnimationFrame(draw);
-    const chips = [];
-    const key = h('ul', { class: 'chips' }, list(data.cellTypes).filter((c) => src[c.id]).map((cell) => {
-      const b = h('button', { type: 'button', class: 'chip', 'aria-pressed': state.map.focus === cell.id ? 'true' : 'false',
-        onclick: () => { const on = state.map.focus !== cell.id; state.map.focus = on ? cell.id : null; chips.forEach((x) => x.setAttribute('aria-pressed', x === b && on ? 'true' : 'false')); draw(); } },
-        h('span', { class: 'dot', style: `background:${colourOf(cell)}`, 'aria-hidden': 'true' }), label(cell));
-      chips.push(b);
-      return h('li', {}, b);
-    }));
-    return h('div', { class: 'mapfig' }, h('div', { class: 'mapframe' }, canvas), h('div', { class: 'plot-tools' }, toggle), caption, key);
-  }
-
-  function figureCards(items) {
-    const cards = list(items).filter((f) => f && (isNum(f.value) || isText(f.value)));
-    if (!cards.length) return null;
-    return h('ul', { class: 'figures' }, cards.map((f) => h('li', { class: 'card stat' },
-      h('span', { class: 'fvalue', text: isNum(f.value) ? num(f.value, 0) : f.value }),
-      h('span', { class: 'funit', text: isText(f.unit) ? f.unit : ui('unitMissing') }),
-      isText(f.label) && h('span', { class: 'small', text: f.label }))));
-  }
-
   const linkOut = (url, text, cls) => h('a', { class: cls || 'btn', href: url, target: '_blank', rel: 'noopener' }, text, h('span', { class: 'sr', text: ' ' + ui('newTab') }), h('span', { class: 'arr', 'aria-hidden': 'true', text: '↗' }));
   // A link to a form on another site, or a switched-off button with a note while the address is not set.
   function formButton(url, text, pendingNote, id) {
@@ -647,205 +496,283 @@
     if (isUrl(url)) return linkOut(url, text);
     return [h('button', { type: 'button', class: 'btn', disabled: true, 'aria-describedby': isText(pendingNote) ? id : null, text }), isText(pendingNote) && h('p', { id, class: 'small', text: pendingNote })];
   }
-  function scrollToId(id) {
+  const scrollToId = (id) => {
     const el = $(id);
     if (!el) return;
     el.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' });
-    const hd = el.querySelector('h2');
+    const hd = el.querySelector('h1, h2');
     if (hd) { hd.setAttribute('tabindex', '-1'); hd.focus({ preventScroll: true }); }
-  }
-  // Repaint a panel in place: pin its height and the scroll position so the page never jumps.
-  function keepScroll(box, fn) {
-    const y = window.scrollY;
-    box.style.minHeight = box.offsetHeight + 'px';
-    fn();
-    window.scrollTo(window.scrollX, y);
-    requestAnimationFrame(() => { window.scrollTo(window.scrollX, y); box.style.minHeight = ''; });
-  }
-  const arrow = (ch) => h('span', { class: 'arr', 'aria-hidden': 'true', text: ch });
+  };
 
-  /* ---------- view 1: home — hero, poll, data lab ---------- */
+  /* ---------- the home page: six sections, each with one job and one way on ---------- */
 
-  // Stage switcher: three small pills. Clicking one reveals that stage and scrolls to the top of it.
-  function stageBar(current) {
-    const names = list(ui('stageNames'));
-    const has = (n) => n === 1 ? !!data.poll : n === 2 ? list(data.caseStudies).length > 0 && !!data.lab : !!data.lab;
-    return h('ol', { class: 'stagebar', 'aria-label': ui('stageOf') }, [1, 2, 3].filter(has).map((n) => h('li', {},
-      h('button', { type: 'button', class: 'stagepill', 'aria-current': n === current ? 'step' : null, onclick: () => goStage(n) },
-        h('span', { class: 'qn', 'aria-hidden': 'true', text: String(n) }), h('span', { class: 'sr', text: ui('stageOf') + ' ' }), names[n - 1] || ''))));
+  const KNOWN = ['question', 'poll', 'pivot', 'lab', 'explore', 'further'];
+  const pad3 = (n) => String(n).padStart(3, '0');
+  let homeSecs = [];
+  let hooks = {};          // refresh functions the sections register so they can update each other
+
+  // Sections come from data.sections, in that order. One that is missing from the data, or has nothing to show, is dropped
+  // and the rest renumber themselves.
+  function homeSections() {
+    const hasPoll = !!(data.poll && list(data.poll.items).length);
+    const hasLab = !!(data.lab && list(data.series).length && list(data.donors).length);
+    const have = { question: !!data.hero, poll: hasPoll, pivot: !!data.pivot, lab: hasLab && list(data.caseStudies).length > 0, explore: hasLab, further: !!data.further };
+    const wanted = Array.isArray(data.sections) ? data.sections : KNOWN.map((id) => ({ id }));
+    const seen = new Set();
+    return wanted.filter((s) => s && KNOWN.includes(s.id) && have[s.id] && !seen.has(s.id) && seen.add(s.id)).map((s) => Object.assign({ name: s.id }, s));
   }
-  const stageHead = (n, title, intro) => h('div', { class: 'stagehead' }, stageBar(n), heading(2, title), para(intro, 'lede'));
+  const badge = (n, name) => h('p', { class: 'badge' }, h('span', { class: 'bn', text: pad3(n) }), h('span', { 'aria-hidden': 'true', text: '·' }), h('span', { class: 'bt', text: name }));
+  const sectionEl = (def, cls, kids) => h('section', { class: ['sec', cls, def.dark ? 'dark' : ''].filter(Boolean).join(' '), id: def.id, 'data-id': def.id, 'aria-label': def.name }, h('div', { class: 'wrap' }, kids.flat(Infinity).filter(Boolean)));
+  const head = (n, def, title, lead) => [badge(n, def.name), h('h2', { class: 'sech' }, fillNodes(title)), para(lead, 'lead')];
+  const nextId = (def) => { const i = homeSecs.findIndex((s) => s.id === def.id); return i >= 0 && homeSecs[i + 1] ? homeSecs[i + 1].id : null; };
+  const nextBtn = (def, text, cls) => isText(text) && nextId(def) ? h('button', { type: 'button', class: cls || 'btn', onclick: () => go(nextId(def)) }, text, arrow('↓')) : null;
 
-  function heroBlock() {
+  /* 001 · the question */
+  function secQuestion(def) {
     const hero = data.hero || {};
-    const title = hero.title || data.meta.title || '';
-    const m = /^(Alz)(.+)$/.exec(title);
-    return h('section', { class: 'bandfull herob' }, h('div', { class: 'wrap' }, h('div', { class: 'hero' },
-      h('h1', { tabindex: '-1' }, m ? [h('span', { class: 'alz', text: m[1] }), m[2]] : title),
-      para(hero.description, 'lede'),
-      data.poll && isText(hero.cta) && h('button', { type: 'button', class: 'btn big light', onclick: () => goStage(1) }, hero.cta, arrow('↓')))));
+    return sectionEl(def, 'hero', [
+      h('div', { class: 'orb', 'aria-hidden': 'true' }),
+      h('h1', { tabindex: '-1' }, fillNodes(hero.question)),
+      para(hero.description, 'lead'),
+      nextBtn(def, hero.cta),
+      h('p', { class: 'hint', 'aria-hidden': 'true' }, h('span'), h('span'), h('span'))]);
   }
 
-  // The celebratory prize card that closes the learning journey.
-  function prizeCallout() {
-    const prize = (data.hero || {}).prize;
-    if (!prize || !data.prize) return null;
-    return h('section', { class: 'bandfull b-white', id: 'journey-end' }, h('div', { class: 'wrap' }, h('aside', { class: 'prizecard' },
-      isText(prize.badge) && h('p', { class: 'badge', text: fill(prize.badge) }),
-      heading(2, prize.heading),
-      para(prize.body),
-      isText(prize.cta) && h('div', { class: 'actions' }, h('a', { class: 'btn gold big', href: '#prize' }, prize.cta, arrow('→'))))));
-  }
-
-  function pollBlock() {
+  /* 002 · what you think: one statement at a time, no feedback, then the result in the same card */
+  function secPoll(def, n) {
     const poll = data.poll;
-    if (!poll || !list(poll.items).length) return null;
     const items = list(poll.items);
     const keys = ['true', 'false', 'dk'];
     const names = poll.options || {};
-    const sec = h('section', { class: 'bandfull b-lav', id: 'poll' });
-    const box = h('div', { class: 'wrap' });
-    sec.append(box);
     const endpoint = isUrl((data.config || {}).pollEndpoint) ? data.config.pollEndpoint : null;
     const P = state.poll;
+    const box = h('div', { class: 'pollfocal' });
+    let timer = 0;
     const csv = (rec) => {
-      const head = ['submitted', 'classCode', ...items.map((i) => i.id), 'score'];
+      const hd = ['submitted', 'classCode', ...items.map((i) => i.id), 'score'];
       const row = [rec.at, rec.classCode, ...items.map((i) => rec.answers[i.id] || ''), rec.score];
-      return [head, row].map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+      return [hd, row].map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
     };
+    const answered = () => items.filter((i) => P.answers[i.id]).length;
+    const firstOpen = () => items.findIndex((i) => !P.answers[i.id]);
 
-    const goLab = () => h('div', { class: 'cta-row' }, data.lab && isText(poll.labCta) && h('button', { type: 'button', class: 'btn big', 'data-k': 'continue', onclick: () => goStage(2) }, poll.labCta, arrow('→')));
-    const paint = (focus) => keepScroll(box, () => paintNow(focus));
-    const paintNow = (focus) => {
+    const paint = (focus, transition) => {
+      const run = () => keepScroll(box, () => { box.replaceChildren(...view().flat(Infinity).filter(Boolean)); focusIn(box, focus); });
+      if (transition) swap(run); else run();
+    };
+    const choose = (k) => {
+      const it = items[P.index];
+      P.answers[it.id] = k;
+      clearTimeout(timer);
+      paint('c-' + k);
+      timer = setTimeout(() => {
+        const open = firstOpen();
+        if (P.index < items.length - 1) P.index += 1;
+        else if (open >= 0) P.index = open;
+        else P.phase = 'code';
+        paint(P.phase === 'code' ? 'code' : 'c-true');
+      }, 250);
+    };
+    const dots = () => h('div', { class: 'pdots', role: 'group', 'aria-label': fill(poll.ofLabel, { n: P.index + 1, total: items.length }) },
+      items.map((it, i) => h('button', { type: 'button', class: 'pdot' + (P.answers[it.id] ? ' on' : '') + (P.phase === 'ask' && i === P.index ? ' cur' : ''), 'aria-label': fill(poll.ofLabel, { n: i + 1, total: items.length }),
+        'aria-current': P.phase === 'ask' && i === P.index ? 'step' : null, onclick: () => { clearTimeout(timer); P.phase = 'ask'; P.index = i; paint('c-true'); } })));
+
+    const askCard = () => {
+      const it = items[P.index];
+      return h('div', { class: 'card pollcard' },
+        h('p', { class: 'small soft', text: fill(poll.ofLabel, { n: P.index + 1, total: items.length }) }),
+        h('p', { class: 'stmt', id: 'stmt' }, `“${it.statement}”`),
+        h('div', { class: 'choices', role: 'group', 'aria-labelledby': 'stmt' }, keys.map((k, i) => h('button', { type: 'button', class: 'choice', 'aria-pressed': P.answers[it.id] === k ? 'true' : 'false', 'data-k': 'c-' + k, onclick: () => choose(k) },
+          h('span', { class: 'ck', 'aria-hidden': 'true', text: String(i + 1) }), names[k] || k))),
+        h('div', { class: 'pollnav' }, P.index > 0 && isText(poll.backLabel) ? qlink(poll.backLabel, () => { clearTimeout(timer); P.index -= 1; paint('c-true'); }) : h('span')));
+    };
+    const codeCard = () => h('form', { class: 'card pollcard', novalidate: true, onsubmit: (ev) => {
+      ev.preventDefault();
+      const score = items.filter((i) => P.answers[i.id] === i.correct).length;
+      P.submitted = { at: new Date().toISOString(), classCode: P.classCode.trim().slice(0, 24), answers: Object.assign({}, P.answers), score };
+      P.phase = 'result';
+      store.set('poll', P.submitted);
+      if (endpoint) { try { fetch(endpoint, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(P.submitted) }).catch(() => {}); } catch (e) { /* offline: the result is still shown */ } }
+      paint('result', true);
+      if (hooks.pivot) hooks.pivot();
+    } },
+      isText(poll.classCodeLabel) && h('div', { class: 'codecard' },
+        h('label', { for: 'classcode', text: poll.classCodeLabel }),
+        h('input', { id: 'classcode', 'data-k': 'code', type: 'text', maxlength: '24', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', value: P.classCode, 'aria-describedby': isText(poll.classCodeHint) ? 'classcode-hint' : null, oninput: (ev) => { P.classCode = ev.target.value; } }),
+        isText(poll.classCodeHint) && h('p', { id: 'classcode-hint', class: 'small soft', text: poll.classCodeHint })),
+      h('div', { class: 'actions' }, h('button', { type: 'submit', class: 'btn', text: poll.submitLabel || '' })),
+      para(endpoint ? poll.privacyShared : poll.privacyLocal, 'small soft'),
+      h('div', { class: 'pollnav' }, isText(poll.backLabel) ? qlink(poll.backLabel, () => { P.phase = 'ask'; P.index = items.length - 1; paint('c-true'); }) : h('span')));
+
+    const resultCard = () => {
       const done = P.submitted;
-      const kids = [stageHead(1, poll.heading, poll.framing)];
-      if (!done && P.skipped) {
-        kids.push(h('div', { class: 'card stack' }, h('p', { class: 'statement', text: ui('pollSkipped') }), h('div', { class: 'cta-row' },
-          data.lab && isText(poll.labCta) && h('button', { type: 'button', class: 'btn big', 'data-k': 'continue', onclick: () => goStage(2) }, poll.labCta, arrow('→')),
-          h('button', { type: 'button', class: 'linkbtn', text: ui('takePoll'), onclick: () => { P.skipped = false; paint('form'); } }))));
-      } else if (!done) {
-        const count = () => items.filter((i) => P.answers[i.id]).length;
-        const submit = h('button', { type: 'submit', class: 'btn big', disabled: count() < items.length, text: poll.submitLabel || '' });
-        const progress = h('span', { class: 'small', role: 'status', text: fill(poll.progressLabel, { answered: count(), total: items.length }) });
-        kids.push(h('form', { class: 'poll', novalidate: true, onsubmit: (ev) => {
-          ev.preventDefault();
-          if (count() < items.length) return;
-          const score = items.filter((i) => P.answers[i.id] === i.correct).length;
-          P.submitted = { at: new Date().toISOString(), classCode: P.classCode.trim().slice(0, 24), answers: Object.assign({}, P.answers), score };
-          store.set('poll', P.submitted);
-          if (endpoint) { try { fetch(endpoint, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(P.submitted) }).catch(() => {}); } catch (e) { /* offline: the result is still shown */ } }
-          paintNow('result');
-        } },
-          h('ol', { class: 'poll-items' }, items.map((item, n) => h('li', {}, h('fieldset', {},
-            h('legend', {}, h('span', { class: 'qn', 'aria-hidden': 'true', text: String(n + 1) }), `“${item.statement}”`),
-            h('div', { class: 'tfd' }, keys.map((k) => h('label', { for: `${item.id}-${k}` },
-              h('input', { type: 'radio', name: item.id, value: k, id: `${item.id}-${k}`, checked: P.answers[item.id] === k,
-                onchange: () => { P.answers[item.id] = k; submit.disabled = count() < items.length; progress.textContent = fill(poll.progressLabel, { answered: count(), total: items.length }); } }),
-              h('span', { text: names[k] || k }))))))),
-          ),
-          isText(poll.classCodeLabel) && h('div', { class: 'classcode' },
-            h('label', { for: 'classcode', text: poll.classCodeLabel }),
-            h('input', { id: 'classcode', type: 'text', maxlength: '24', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', value: P.classCode, 'aria-describedby': isText(poll.classCodeHint) ? 'classcode-hint' : null, oninput: (ev) => { P.classCode = ev.target.value; } }),
-            isText(poll.classCodeHint) && h('p', { id: 'classcode-hint', class: 'small', text: poll.classCodeHint })),
-          h('div', { class: 'actions' }, submit, progress),
-          para(endpoint ? poll.privacyShared : poll.privacyLocal, 'small'),
-          h('div', { class: 'skiprow' }, h('button', { type: 'button', class: 'skiplink', onclick: () => { P.skipped = true; paint('skipped'); } }, ui('skipPoll') + ' →'))));
-      } else {
-        const mean = items.reduce((a, i) => a + ((i.benchmark || {})[i.correct] || 0), 0) / items.length;
-        kids.push(h('div', { class: 'result' },
-          h('h3', { class: 'score', tabindex: '-1' }, fillNodes(poll.resultHeading, { score: done.score, total: items.length })),
-          para(poll.resultCompare, null, { benchmarkMean: qty(mean, '%', 0) }),
-          goLab(),
-          h('ol', { class: 'compare' }, items.map((item) => {
-            const b = item.benchmark || {};
-            const mine = done.answers[item.id];
-            const right = mine === item.correct;
-            return h('li', { class: 'card' },
-              h('p', { class: 'statement' }, `“${item.statement}”`),
-              h('p', {}, h('span', { class: 'verdict ' + (right ? 'right' : 'wrong'), text: (right ? poll.rightLabel : poll.wrongLabel) || '' }), ' ',
-                [isText(poll.yourAnswer) && `${poll.yourAnswer}: ${names[mine] || mine}.`, isText(poll.correctAnswer) && `${poll.correctAnswer}: ${names[item.correct] || item.correct}.`].filter(Boolean).join(' ')),
-              h('div', { class: 'bar', role: 'img', 'aria-label': [poll.benchmarkLabel, keys.map((k) => `${names[k] || k} ${qty(b[k], '%', 1)}`).join(', ')].filter(isText).join(': ') },
-                keys.map((k) => (isNum(b[k]) ? h('span', { class: 'seg ' + k + (k === item.correct ? ' correct' : ''), style: `width:${b[k]}%` }) : null))),
-              h('p', { class: 'small barkey' }, isText(poll.benchmarkLabel) && h('b', { text: poll.benchmarkLabel + ': ' }), keys.map((k, i) => h('span', { class: k === item.correct ? 'kcorrect' : null },
-                `${names[k] || k} ${qty(b[k], '%', 1)}`, mine === k && h('span', { text: ` (${ui('you')})` }), i < keys.length - 1 ? ' · ' : ''))));
-          })),
-          (isText(poll.benchmarkSource) || isUrl(poll.benchmarkSourceUrl)) && h('p', { class: 'small' }, poll.benchmarkSource || '', ' ', isUrl(poll.benchmarkSourceUrl) && linkOut(poll.benchmarkSourceUrl, poll.benchmarkSourceUrl.replace(/^https:\/\/([^/]+).*$/, '$1'), 'inline')),
-          h('div', { class: 'actions' },
-            isText(poll.exportLabel) && h('button', { type: 'button', class: 'btn ghost', text: poll.exportLabel, onclick: () => saveBlob(new Blob([csv(done)], { type: 'text/csv' }), 'alzexplore-poll.csv') }),
-            isText(poll.retakeLabel) && h('button', { type: 'button', class: 'btn ghost', text: poll.retakeLabel, onclick: () => { P.submitted = null; P.answers = {}; paint('form'); } }),
-            isText(poll.clearLabel) && h('button', { type: 'button', class: 'linkbtn', text: poll.clearLabel, onclick: () => { store.del('poll'); P.submitted = null; P.answers = {}; P.classCode = ''; paint('form'); } }))));
-        if (list(poll.decoders).length) {
-          kids.push(heading(3, poll.decodersHeading, null, 'subhead'),
-            h('ul', { class: 'bento three' }, list(poll.decoders).map((d) => h('li', { class: 'card' }, heading(4, d.title), para(d.body)))));
-        }
-        kids.push(goLab());
-      }
-      box.replaceChildren(...kids.flat(Infinity).filter(Boolean));
-      if (focus === 'result') { const t = box.querySelector('.score'); if (t) { t.focus({ preventScroll: true }); t.scrollIntoView({ block: 'start', behavior: reducedMotion.matches ? 'auto' : 'smooth' }); } }
-      if (focus === 'form') { const t = box.querySelector('input'); if (t) t.focus({ preventScroll: true }); }
-      if (focus === 'skipped') { const t = box.querySelector('[data-k="continue"]'); if (t) t.focus({ preventScroll: true }); }
+      const mean = items.reduce((a, i) => a + ((i.benchmark || {})[i.correct] || 0), 0) / items.length;
+      const wrongForMost = items.filter((i) => isNum((i.benchmark || {})[i.correct]) && i.benchmark[i.correct] < 50).length;
+      return h('div', { class: 'card pollcard result' },
+        h('h3', { class: 'score', tabindex: '-1', 'data-k': 'result' }, fillNodes(poll.resultHeading, { score: done.score, total: items.length })),
+        para(poll.resultCompare, 'soft', { benchmarkMean: qty(mean, '%', 0) }),
+        wrongForMost > 0 && para(poll.resultGap, 'gap-line', { count: wrongForMost }),
+        h('ol', { class: 'rows' }, items.map((item) => {
+          const b = item.benchmark || {};
+          const mine = done.answers[item.id];
+          const right = mine === item.correct;
+          const total = keys.reduce((a, k) => a + (isNum(b[k]) ? b[k] : 0), 0) || 1;
+          return h('li', {},
+            h('div', { class: 'rowtop' }, h('p', { class: 'statement' }, `“${item.statement}”`), h('span', { class: 'verdict ' + (right ? 'right' : 'wrong'), text: (right ? poll.rightLabel : poll.wrongLabel) || '' })),
+            h('div', { class: 'bar', role: 'img', 'aria-label': [poll.benchmarkLabel, keys.map((k) => `${names[k] || k} ${qty(b[k], '%', 1)}`).join(', '), isText(poll.yourAnswer) && `${poll.yourAnswer}: ${names[mine] || mine}`].filter(isText).join('. ') },
+              keys.map((k) => (isNum(b[k]) ? h('span', { class: 'seg' + (k === item.correct ? ' correct' : ''), style: `width:${(b[k] / total) * 100}%` }, mine === k && h('span', { class: 'you' })) : null))),
+            h('p', { class: 'small barkey' }, isText(poll.benchmarkLabel) && h('b', { text: poll.benchmarkLabel + ': ' }),
+              keys.map((k, i) => h('span', { class: k === item.correct ? 'good' : null }, `${names[k] || k} ${qty(b[k], '%', 1)}`, mine === k && h('span', { text: ` (${ui('you')})` }), i < keys.length - 1 ? ' · ' : ''))));
+        })),
+        (isText(poll.benchmarkSource) || isUrl(poll.benchmarkSourceUrl)) && h('p', { class: 'small soft' }, poll.benchmarkSource || '', ' ', isUrl(poll.benchmarkSourceUrl) && linkOut(poll.benchmarkSourceUrl, poll.benchmarkSourceUrl.replace(/^https:\/\/([^/]+).*$/, '$1'), 'inline')),
+        h('div', { class: 'qlinks' },
+          isText(poll.exportLabel) && qlink(poll.exportLabel, () => saveBlob(new Blob([csv(done)], { type: 'text/csv' }), 'unravel-poll.csv')),
+          isText(poll.retakeLabel) && qlink(poll.retakeLabel, () => { P.submitted = null; P.answers = {}; P.index = 0; P.phase = 'ask'; paint('c-true', true); if (hooks.pivot) hooks.pivot(); }),
+          isText(poll.clearLabel) && qlink(poll.clearLabel, () => { store.del('poll'); P.submitted = null; P.answers = {}; P.classCode = ''; P.index = 0; P.phase = 'ask'; paint('c-true', true); if (hooks.pivot) hooks.pivot(); })));
     };
-    paintNow(null);
-    return sec;
-  }
-
-  const currentCase = () => byId(data.caseStudies, state.caseId) || list(data.caseStudies)[0] || null;
-  function sandboxDefaults() {
-    const first = list((data.lab || {}).launchpads)[0] || list(data.series)[0] || {};
-    return { metric: first.metric, cellType: first.cellType, grouping: first.grouping || (list(data.groupings)[0] || {}).id };
-  }
-
-  // Stages 2 and 3. Built once, on first reveal. Every control repaints only its own panel, in place.
-  function labStages() {
-    const lab = data.lab;
-    if (!lab || !list(data.series).length || !list(data.donors).length) return null;
-    const hasGuided = list(data.caseStudies).length > 0;
-    const make = (id, cls) => { const sec = h('section', { class: 'bandfull ' + cls, id }); const box = h('div', { class: 'wrap' }); sec.append(box); return { sec, box }; };
-    const G = make('guided', 'b-lilac');
-    const S = make('solo', 'b-lav');
-    let origin = null;      // built once, so the map keeps its state while the rest of the lab repaints
-
-    const controls = (which) => {
-      const pill = (key, on, text, onclick) => h('button', { type: 'button', class: 'switch', role: 'switch', 'aria-checked': on ? 'true' : 'false', 'data-k': key, onclick }, h('span', { class: 'knob', 'aria-hidden': 'true' }), h('span', { text }));
-      return h('div', { class: 'labbar' },
-        isText(lab.translatorLabel) && pill('translator', state.plain, [lab.translatorLabel, state.plain ? lab.translatorOn : lab.translatorOff].filter(isText).join(': '), () => { state.plain = !state.plain; origin = null; paintAll('translator', which); }),
-        isText(lab.overlayLabel) && pill('overlay', state.overlay, lab.overlayLabel, () => { state.overlay = !state.overlay; paintAll('overlay', which); }));
-    };
-    const cheatsBlock = () => (list(lab.cheats).length && isText(lab.cheatHeading) ? h('details', { class: 'drawer' }, h('summary', { text: lab.cheatHeading }),
-      h('ul', { class: 'bento five' }, list(lab.cheats).map((c) => h('li', { class: 'card mini' }, heading(4, c.title), para(c.body, 'small')))),
-      list(data.terms).length > 0 && h('ul', { class: 'terms small' }, list(data.terms).map((t) => h('li', {}, h('b', { text: t.research }), ' = ', t.plain)))) : null);
-    const focusIn = (box, key) => { if (!key) return; const t = box.querySelector(`[data-k="${key}"]`); if (t) t.focus({ preventScroll: true }); };
-
-    const paintGuided = (focusKey) => keepScroll(G.box, () => {
-      if (!origin) {
-        const map = mapBlock();
-        const text = [paras(lab.originBody), figureCards(lab.originFigures)].flat(Infinity).filter(Boolean);
-        origin = (map || text.length) && isText(lab.originHeading) ? h('details', { class: 'drawer origin', open: true }, h('summary', { text: lab.originHeading }),
-          h('div', { class: 'origin-grid' }, text.length > 0 && h('div', { class: 'stack' }, text), map)) : false;
-      }
-      G.box.replaceChildren(...[stageHead(2, lab.modeGuided || lab.heading, lab.intro), origin, controls('guided'), cheatsBlock(), guidedBlock(paintGuided)].flat(Infinity).filter(Boolean));
-      focusIn(G.box, focusKey);
-    });
-    const paintSolo = (focusKey) => keepScroll(S.box, () => {
-      S.box.replaceChildren(...[stageHead(3, lab.modeSandbox || lab.heading, lab.sandboxIntro), controls('solo'), sandboxBlock(paintSolo)].flat(Infinity).filter(Boolean));
-      focusIn(S.box, focusKey);
-    });
-    // The translator and chart switches are shared, so both panels are repainted; focus returns to the one that was used.
-    function paintAll(focusKey, which) {
-      if (hasGuided) paintGuided(which === 'guided' ? focusKey : null);
-      if (S.sec.isConnected || which === 'solo') paintSolo(which === 'solo' ? focusKey : null);
+    function view() {
+      if (P.phase === 'result' && P.submitted) return [resultCard(), h('div', { class: 'actions' }, nextBtn(def, poll.resultCta))];
+      if (P.phase === 'code' && answered() === items.length) return [dots(), codeCard()];
+      P.phase = 'ask';
+      return [dots(), askCard()];
     }
+    paint(null);
+    api.poll = {
+      key(ev) {
+        if (P.phase !== 'ask') return false;
+        const k = { 1: 'true', 2: 'false', 3: 'dk' }[ev.key];
+        if (k) { choose(k); return true; }
+        if (ev.key === 'ArrowLeft' && P.index > 0) { clearTimeout(timer); P.index -= 1; paint('c-true'); return true; }
+        return false;
+      },
+    };
+    return sectionEl(def, 'poll', [head(n, def, poll.heading, poll.framing), box]);
+  }
 
-    function guidedBlock(repaint) {
+  /* 003 · the pivot: the poll's hinge statement, the distinction, and three nested rings */
+  function secPivot(def, n) {
+    const pv = data.pivot;
+    const poll = data.poll || {};
+    const names = poll.options || {};
+    const item = byId(poll.items, poll.pivotItemId);
+    const rings = pv.rings || {};
+    const verdict = h('p', { class: 'pverdict' });
+    const yours = h('p', { class: 'small soft' });
+    const refresh = () => {
+      if (!item) return;
+      verdict.textContent = [pv.verdictLabel, names[item.correct] || item.correct].filter(isText).join(' ');
+      const mine = state.poll.submitted && state.poll.submitted.answers[item.id];
+      const b = item.benchmark || {};
+      yours.textContent = [mine && isText(poll.yourAnswer) ? `${poll.yourAnswer}: ${names[mine] || mine}.` : '',
+        isText(poll.benchmarkLabel) && isNum(b[item.correct]) ? `${poll.benchmarkLabel}: ${names[item.correct] || item.correct} ${qty(b[item.correct], '%', 1)}.` : ''].filter(Boolean).join(' ');
+    };
+    hooks.pivot = refresh;
+    refresh();
+    // The picture: it is the whole argument in one image. Labels come from the data.
+    const svg = s('svg', { viewBox: '0 0 400 400', role: 'img', 'aria-label': [rings.outer, rings.inner, rings.core].filter(isText).join(' › ') });
+    let seed = 7;
+    const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const g1 = s('g', { class: 'g1' }); g1.append(s('circle', { class: 'r', cx: 200, cy: 200, r: 190 }), s('text', { x: 200, y: 50 }, rings.outer || ''));
+    const g2 = s('g', { class: 'g2' }); g2.append(s('circle', { class: 'r r2', cx: 200, cy: 236, r: 128 }), s('text', { x: 200, y: 140 }, rings.inner || ''));
+    const g3 = s('g', { class: 'g3' }); g3.append(s('circle', { class: 'r r3', cx: 200, cy: 300, r: 58 }), s('text', { x: 200, y: 232 }, rings.core || ''));
+    for (let i = 0; i < 46; i += 1) { const r = 48 * Math.sqrt(rnd()); const a = rnd() * Math.PI * 2; g3.append(s('circle', { class: 'cell', cx: 200 + r * Math.cos(a), cy: 300 + r * Math.sin(a), r: 2.6 })); }
+    svg.append(g1, g2, g3);
+    const ringsEl = h('div', { class: 'rings', 'data-beat': reducedMotion.matches ? '3' : '0' }, svg);
+    const beat = (i, ...kids) => h('div', { class: 'beat rv', 'data-beat': String(i) }, kids);
+    const beats = [
+      beat(1, item && h('blockquote', { class: 'pq' }, `“${item.statement}”`), item && verdict, item && yours),
+      beat(2, paras(pv.body, 'pbody')),
+      beat(3, para(pv.handoff, 'pbody'), h('div', { class: 'actions' }, nextBtn(def, pv.cta)))];
+    api.beats = (i) => { const cur = Number(ringsEl.dataset.beat) || 0; if (i > cur) ringsEl.dataset.beat = String(i); };
+    const dec = list(pv.decoders);
+    return sectionEl(def, 'pivot', [
+      badge(n, def.name), h('h2', { class: 'sech' }, fillNodes(pv.heading)),
+      h('div', { class: 'pivotgrid' }, h('div', { class: 'beats' }, beats), ringsEl),
+      dec.length > 0 && h('div', { class: 'decoders' }, heading(3, pv.decodersHeading), h('ul', { class: 'bento' }, dec.map((d) => h('li', { class: 'card' }, heading(4, d.title), para(d.body, 'small')))))]);
+  }
+
+  /* 004 · the lab: a carousel of five simulations, then the four steps of one */
+  const currentCase = () => byId(data.caseStudies, state.caseId);
+  function secLab(def, n) {
+    const lab = data.lab;
+    const cases = list(data.caseStudies);
+    const box = h('div', { class: 'labfocal' });
+    const titleOf = (c) => (state.plain && isText(c.plainTitle) ? c.plainTitle : c.title) || c.id;
+    const caseIndex = (c) => Math.max(0, cases.indexOf(c));
+
+    const paint = (focus, transition) => {
+      const run = () => keepScroll(box, () => {
+        box.replaceChildren(currentCase() ? stepView() : carousel());
+        focusIn(box, focus);
+        if (!currentCase() && box._place) requestAnimationFrame(() => box._place(false));
+      });
+      if (transition) swap(run); else run();
+    };
+    hooks.lab = paint;
+
+    function carousel() {
+      const view = h('div', { class: 'carview' });
+      const track = h('div', { class: 'track' });
+      const ink = css('--ink', '#1B2632');
+      const slides = cases.map((c, i) => {
+        const v = list(c.views)[0] || {};
+        const Q = buildQuestion({ metric: v.metric, cellType: v.cellType, grouping: c.grouping, filter: c.filter || null });
+        const colour = colourOf(cellOf(v.cellType));
+        const cf = lab.cardFigures || {};
+        const figs = Q ? [
+          [cf.donors, num(Q.groups.reduce((a, g) => a + g.n, 0), 0), donorUnit() || ui('unitMissing')],
+          [cf.groups, num(Q.groups.filter((g) => g.n > 0).length, 0), cf.groupsUnit || ui('unitMissing')],
+          [cf.measure, label(Q.metric), Q.unit || ui('unitMissing')]] : [];
+        return h('article', { class: 'slide', 'aria-roledescription': 'slide', 'aria-label': `${i + 1} / ${cases.length}`, onclick: () => { if (i !== state.car) goTo(i); } },
+          h('div', { class: 'card cslide' },
+            h('div', { class: 'tile', style: `background:linear-gradient(150deg, ${colour}, ${mix(colour, ink, 0.6)})`, 'aria-hidden': 'true' }, h('span', { class: 'tn', text: String(i + 1) })),
+            h('div', { class: 'cbody' },
+              h('p', { class: 'kicker', text: label(cellOf(v.cellType)) }),
+              h('h3', {}, h('button', { type: 'button', class: 'cardtitle', 'data-k': 'case-' + c.id, onclick: () => open(c) }, titleOf(c))),
+              para(c.brief, 'brief'),
+              isText(lab.openLabel) && qlink(lab.openLabel, () => open(c)),
+              figs.length > 0 && h('ul', { class: 'figs' }, figs.map(([cap, val, unit]) => h('li', {}, h('span', { class: 'fv', text: val }), h('span', { class: 'fu', text: unit }), isText(cap) && cap.toLowerCase() !== String(unit).toLowerCase() && h('span', { class: 'fl', text: cap })))))));
+      });
+      track.append(...slides);
+      view.append(track);
+      const prev = h('button', { type: 'button', class: 'arrow prev', 'aria-label': ui('prevCard'), onclick: () => goTo(state.car - 1), text: '←' });
+      const next = h('button', { type: 'button', class: 'arrow next', 'aria-label': ui('nextCard'), onclick: () => goTo(state.car + 1), text: '→' });
+      const dots = h('div', { class: 'cdots' }, cases.map((c, i) => h('button', { type: 'button', class: 'cdot', 'aria-label': `${i + 1}: ${titleOf(c)}`, onclick: () => goTo(i) })));
+      const wrap = h('div', { class: 'carwrap', role: 'region', 'aria-roledescription': 'carousel', 'aria-label': lab.heading || '' }, view, prev, next, dots);
+      function place(animate) {
+        const vw = view.clientWidth;
+        if (!vw) return;
+        state.car = Math.min(Math.max(0, state.car), cases.length - 1);
+        const sw = vw * (vw < 640 ? 0.86 : 0.78);
+        track.classList.toggle('anim', !!animate && !reducedMotion.matches);
+        track.style.transform = `translateX(${(vw - sw) / 2 - state.car * sw}px)`;
+        slides.forEach((el, i) => { el.classList.toggle('cur', i === state.car); const inner = el.firstChild; if ('inert' in inner) inner.inert = i !== state.car; });
+        [...dots.children].forEach((d, i) => { if (i === state.car) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current'); });
+        prev.disabled = state.car === 0;
+        next.disabled = state.car === cases.length - 1;
+      }
+      function goTo(i, focusCard) {
+        if (i < 0 || i > cases.length - 1) return;
+        state.car = i;
+        place(true);
+        if (focusCard) { const t = slides[i].querySelector('.cardtitle'); if (t) t.focus({ preventScroll: true }); }
+      }
+      // swipe, and the arrow keys while focus is inside or the lab is the section on screen
+      let x0 = null;
+      view.addEventListener('pointerdown', (ev) => { x0 = ev.clientX; });
+      view.addEventListener('pointerup', (ev) => { if (x0 !== null && Math.abs(ev.clientX - x0) > 50) goTo(state.car + (ev.clientX < x0 ? 1 : -1)); x0 = null; });
+      view.addEventListener('pointercancel', () => { x0 = null; });
+      if ('ResizeObserver' in window) new ResizeObserver(() => { if (view.isConnected) place(false); }).observe(view);
+      box._place = place;
+      api.lab = { key(ev) { if (!view.isConnected) return false; const d = { ArrowLeft: -1, ArrowRight: 1 }[ev.key]; if (!d) return false; goTo(state.car + d, true); return true; } };
+      return wrap;
+    }
+    function open(c) { state.caseId = c.id; state.car = caseIndex(c); state.step = 0; state.view = 0; api.lab = null; paint('next', true); }
+
+    function stepView() {
       const cs = currentCase();
-      const title = (c) => (state.plain && isText(c.plainTitle) ? c.plainTitle : c.title) || c.id;
-      const idx = Math.max(0, list(data.caseStudies).indexOf(cs));
-      const picker = h('div', { class: 'simpills', role: 'group', 'aria-label': ui('simLong') },
-        list(data.caseStudies).map((c, i) => h('button', { type: 'button', class: 'chip', 'aria-pressed': c === cs ? 'true' : 'false', 'aria-label': `${ui('simLong')} ${i + 1}: ${title(c)}`, 'data-k': 'case-' + c.id,
-          onclick: () => { state.caseId = c.id; state.step = 0; state.view = 0; repaint('case-' + c.id); } }, `${ui('simShort')} ${i + 1}`)));
       const labels = list(lab.stepLabels);
-      const stepper = h('ol', { class: 'stepper' }, [0, 1, 2, 3].map((i) => h('li', { class: i === state.step ? 'here' : i < state.step ? 'done' : '' }, h('button', { type: 'button', 'aria-current': i === state.step ? 'step' : null, 'data-k': 'step-' + i, onclick: () => { state.step = i; repaint('step-' + i); } },
-        h('span', { class: 'qn', 'aria-hidden': 'true', text: String(i + 1) }), h('span', { class: 'sr', text: `${ui('step')} ${i + 1}: ` }), h('span', { class: 'steplabel', text: labels[i] || '' })))));
+      const repaint = (key) => paint(key, false);
       const views = list(cs.views);
       state.view = Math.min(state.view, Math.max(0, views.length - 1));
       const view = views[state.view] || {};
@@ -854,25 +781,24 @@
       const predicted = state.predictions[cs.id];
       const predictOptions = list((cs.predict || {}).options);
       const predLabel = (id) => (predictOptions.find((o) => o.id === id) || {}).label || '';
-      const nav = () => h('div', { class: 'actions' },
-        state.step > 0 && isText(lab.backLabel) && h('button', { type: 'button', class: 'btn ghost', text: lab.backLabel, onclick: () => { state.step -= 1; repaint('step-' + state.step); } }),
-        state.step < 3 && isText(lab.nextLabel) && h('button', { type: 'button', class: 'btn', 'data-k': 'next', onclick: () => { state.step += 1; repaint('step-' + state.step); } }, lab.nextLabel, arrow('→')));
-      const viewTabs = views.length > 1 ? h('div', { class: 'viewtabs' }, views.map((v, i) => h('button', { type: 'button', class: 'chip', 'aria-pressed': i === state.view ? 'true' : 'false', 'data-k': 'view-' + i, onclick: () => { state.view = i; repaint('view-' + i); } }, [label(metricOf(v.metric)), label(cellOf(v.cellType))].filter(Boolean).join(' · ')))) : null;
+      const viewTabs = views.length > 1 ? h('div', { class: 'chips' }, views.map((v, i) => h('button', { type: 'button', class: 'chip', 'aria-pressed': i === state.view ? 'true' : 'false', 'data-k': 'view-' + i, onclick: () => { state.view = i; repaint('view-' + i); } }, [label(metricOf(v.metric)), label(cellOf(v.cellType))].filter(Boolean).join(' · ')))) : null;
+      const nextPill = (text, onclick) => isText(text) && h('button', { type: 'button', class: 'btn', 'data-k': 'next', onclick }, text, arrow('→'));
+      const back = state.step > 0 && isText(lab.backLabel) ? qlink(lab.backLabel, () => { state.step -= 1; repaint('next'); }) : h('span');
+      const nav = () => h('div', { class: 'stepnav' }, back, h('div', { class: 'right' }, state.step < 3 && nextPill(lab.nextLabel, () => { state.step += 1; repaint('next'); })));
 
       let body;
       if (state.step === 0) {
-        body = [para(cs.brief), cs.filter && para(cs.filter.note, 'small'),
+        body = [para(cs.brief), cs.filter && para(cs.filter.note, 'small soft'),
           predictOptions.length > 0 && h('fieldset', { class: 'predict' }, h('legend', { text: (cs.predict || {}).question || '' }),
             h('div', { class: 'options' }, predictOptions.map((o) => h('button', { type: 'button', class: 'option', 'aria-pressed': predicted === o.id ? 'true' : 'false', 'data-k': 'pred-' + o.id, onclick: () => { state.predictions[cs.id] = o.id; repaint('next'); } }, o.label)))),
           predicted && para(lab.predictSaved, 'good', { prediction: predLabel(predicted) }),
-          h('div', { class: 'actions' }, h('button', { type: 'button', class: predicted ? 'btn' : 'linkbtn', 'data-k': 'next', onclick: () => { state.step = 1; repaint('step-1'); } },
-            predicted ? [lab.nextLabel || '', arrow('→')] : lab.predictSkip || lab.nextLabel || '→'))];
+          h('div', { class: 'stepnav' }, h('span'), h('div', { class: 'right' }, predicted ? nextPill(lab.nextLabel, () => { state.step = 1; repaint('next'); }) : qlink(lab.predictSkip || lab.nextLabel || '→', () => { state.step = 1; repaint('next'); }, { 'data-k': 'next' })))];
       } else if (state.step === 1) {
         const Q = buildQuestion(base);
         const vars = Object.assign(questionVars(first), { prediction: predLabel(predicted) });
         body = [viewTabs, Q && chartBlock(Q),
           first && para(!predicted ? lab.observeNoPrediction : predicted === first.trend ? lab.observeMatch : lab.observeMiss, 'callout', vars),
-          Q && para(lab.observeStats, null, questionVars(Q)), nav()];
+          Q && para(lab.observeStats, 'soft', questionVars(Q)), nav()];
       } else if (state.step === 2) {
         const chosen = state.strat[cs.id] || null;
         const Q = buildQuestion(Object.assign({}, base, { confounder: chosen }));
@@ -882,28 +808,41 @@
           h('div', { class: 'tablewrap' }, h('table', {},
             h('thead', {}, h('tr', {}, h('th', { scope: 'col', text: `${conf.label} (${donorUnit() || ui('unitMissing')})` }), Q.groups.map((g) => h('th', { scope: 'col', class: 'num', text: g.name })))),
             h('tbody', {}, Q.strata.map((st, si) => h('tr', {}, h('th', { scope: 'row', text: st }), Q.groups.map((g) => h('td', { class: 'num', text: String(g.parts[si].n) }))))))),
-          para(lab.stressCountsNote, 'small')) : null;
+          para(lab.stressCountsNote, 'small soft')) : null;
         body = [para(lab.stressIntro),
-          confs.length > 0 && h('div', { class: 'viewtabs', role: 'group', 'aria-label': labels[2] || null }, [null, ...confs].map((c) => h('button', { type: 'button', class: 'chip', 'aria-pressed': (c ? c.id : null) === chosen ? 'true' : 'false', 'data-k': 'strat-' + (c ? c.id : 'none'), onclick: () => { state.strat[cs.id] = c ? c.id : null; repaint('strat-' + (c ? c.id : 'none')); } }, c ? c.label : lab.stressNone || '–'))),
+          confs.length > 0 && h('div', { class: 'chips', role: 'group', 'aria-label': labels[2] || null }, [null, ...confs].map((c) => h('button', { type: 'button', class: 'chip', 'aria-pressed': (c ? c.id : null) === chosen ? 'true' : 'false', 'data-k': 'strat-' + (c ? c.id : 'none'), onclick: () => { state.strat[cs.id] = c ? c.id : null; repaint('strat-' + (c ? c.id : 'none')); } }, c ? c.label : lab.stressNone || '–'))),
           viewTabs, Q && chartBlock(Q), counts, nav()];
       } else {
+        state.didWork = true;
+        if (hooks.further) hooks.further();
         const tk = cs.takeaway || {};
-        const all = list(data.caseStudies);
-        const next = all[(all.indexOf(cs) + 1) % all.length];
+        const nextCs = cases[(cases.indexOf(cs) + 1) % cases.length];
         body = [first && list(tk.parts).length > 0 && clozeBlock('case:' + cs.id, tk, questionVars(first)),
           (isText(tk.claim) || isText(tk.limitation)) && h('details', { class: 'drawer slim' }, h('summary', { text: ui('modelAnswer') }),
             h('dl', { class: 'model' }, isText(tk.claim) && h('div', {}, h('dt', { text: lab.takeawayClaimLabel || '' }), h('dd', { text: tk.claim })), isText(tk.limitation) && h('div', {}, h('dt', { text: lab.takeawayLimitLabel || '' }), h('dd', { text: tk.limitation })))),
-          h('div', { class: 'actions' },
-            isText(lab.backLabel) && h('button', { type: 'button', class: 'btn ghost', text: lab.backLabel, onclick: () => { state.step = 2; repaint('step-2'); } }),
-            next && next !== cs && h('button', { type: 'button', class: 'btn', onclick: () => { state.caseId = next.id; state.step = 0; state.view = 0; repaint('case-' + next.id); } }, ui('nextCase'), arrow('→')))];
+          h('div', { class: 'stepnav' }, back, h('div', { class: 'right' },
+            nextCs && nextCs !== cs && qlink(ui('nextCase'), () => { state.caseId = nextCs.id; state.car = caseIndex(nextCs); state.step = 0; state.view = 0; repaint('next'); }),
+            hooks.explore && isText(lab.toExplore) && h('button', { type: 'button', class: 'btn', 'data-k': 'next', onclick: () => go('explore') }, lab.toExplore, arrow('↓'))))];
       }
-      return h('div', { class: 'guided' },
-        h('div', { class: 'card sim' }, picker, h('h3', { class: 'simtitle', text: `${ui('simLong')} ${idx + 1}: ${title(cs)}` }), stepper, h('div', { class: 'stack stepbody' }, body)),
-        h('div', { class: 'to-solo' }, h('p', { text: ui('soloCta') }), h('button', { type: 'button', class: 'btn big', 'data-k': 'to-solo', onclick: () => goStage(3) }, ui('soloGo'), arrow('→'))));
+      return h('div', { class: 'card stepcard' },
+        h('div', { class: 'steptop' }, isText(lab.allLabel) ? qlink(lab.allLabel, () => { state.caseId = null; state.car = caseIndex(cs); api.lab = null; paint('case-' + cs.id, true); }, { 'data-k': 'all' }) : h('span'), h('span', { class: 'simname', text: titleOf(cs) })),
+        h('div', { class: 'prog', role: 'group', 'aria-label': labels.join(', ') }, [0, 1, 2, 3].map((i) => h('button', { type: 'button', class: 'seg-b' + (i <= state.step ? ' on' : ''), 'aria-label': `${ui('step')} ${i + 1}: ${labels[i] || ''}`, 'aria-current': i === state.step ? 'step' : null, 'data-k': 'step-' + i, onclick: () => { state.step = i; repaint('step-' + i); } }))),
+        h('div', { class: 'stephead' }, h('p', { class: 'kicker', text: fill(lab.stepOfLabel, { n: state.step + 1, total: 4 }) }), h('h3', { class: 'stepname', text: labels[state.step] || '' })),
+        h('div', { class: 'stack stepbody' }, body));
     }
+    paint(null);
+    return sectionEl(def, 'lab', [head(n, def, lab.heading, lab.intro), box]);
+  }
 
-    function sandboxBlock(repaint) {
-      if (!state.sandbox) state.sandbox = sandboxDefaults();
+  /* 005 · solo explore */
+  function secExplore(def, n) {
+    const lab = data.lab;
+    const ex = data.explore || {};
+    const box = h('div', { class: 'explorefocal' });
+    const paint = (focus) => keepScroll(box, () => { box.replaceChildren(...view().flat(Infinity).filter(Boolean)); focusIn(box, focus); });
+    hooks.explore = paint;
+    function view() {
+      if (!state.sandbox) { const first = list(lab.launchpads)[0] || list(data.series)[0] || {}; state.sandbox = { metric: first.metric, cellType: first.cellType, grouping: first.grouping || (list(data.groupings)[0] || {}).id }; }
       const sb = state.sandbox;
       const metricsWithData = list(data.metrics).filter((m) => list(data.series).some((x) => x.metric === m.id));
       const cellsFor = (metricId) => list(data.cellTypes).filter((c) => seriesOf(metricId, c.id));
@@ -912,175 +851,215 @@
       if (!groupingOf(sb.grouping)) sb.grouping = (list(data.groupings)[0] || {}).id;
       const Q = buildQuestion(sb);
       const b = lab.builder || {};
-      const select = (key, options, value, onchange) => h('select', { 'data-k': key, 'aria-label': key, onchange: (ev) => { onchange(ev.target.value); state.snapshotMade = false; repaint(key); } }, options.map((o) => h('option', { value: o.id, selected: o.id === value }, label(o))));
+      const select = (key, options, value, onchange, name) => h('select', { 'data-k': key, 'aria-label': name || key, onchange: (ev) => { onchange(ev.target.value); state.snapshotMade = false; paint(key); } }, options.map((o) => h('option', { value: o.id, selected: o.id === value }, label(o))));
       const pads = list(lab.launchpads);
-      return h('div', { class: 'sandbox stack' },
-        pads.length > 0 && h('ul', { class: 'bento three' }, pads.map((p) => h('li', {}, h('button', { type: 'button', class: 'card pad', 'aria-pressed': p.metric === sb.metric && p.cellType === sb.cellType && p.grouping === sb.grouping ? 'true' : 'false', 'data-k': 'pad-' + p.id,
-          onclick: () => { state.sandbox = { metric: p.metric, cellType: p.cellType, grouping: p.grouping }; state.snapshotMade = false; repaint('pad-' + p.id); } },
-          h('span', { class: 'padtitle', text: p.title || '' }), isText(p.blurb) && h('span', { class: 'small', text: p.blurb }),
-          h('span', { class: 'small padq', text: [label(metricOf(p.metric)), label(groupingOf(p.grouping)), label(cellOf(p.cellType))].filter(Boolean).join(' · ') }))))),
+      return [
+        pads.length > 0 && h('ul', { class: 'pads' }, pads.map((p) => h('li', {}, h('button', { type: 'button', class: 'card pad', 'aria-pressed': p.metric === sb.metric && p.cellType === sb.cellType && p.grouping === sb.grouping ? 'true' : 'false', 'data-k': 'pad-' + p.id,
+          onclick: () => { state.sandbox = { metric: p.metric, cellType: p.cellType, grouping: p.grouping }; state.snapshotMade = false; paint('pad-' + p.id); } },
+          h('span', { class: 'padtitle', text: p.title || '' }), isText(p.blurb) && h('span', { class: 'small soft', text: p.blurb }),
+          h('span', { class: 'padq', text: [label(metricOf(p.metric)), label(groupingOf(p.grouping)), label(cellOf(p.cellType))].filter(Boolean).join(' · ') }))))),
         h('p', { class: 'builder' }, b.lead || '', ' ',
-          select('metric', metricsWithData, sb.metric, (v) => { sb.metric = v; }), ' ', b.mid1 || '', ' ',
-          select('grouping', list(data.groupings), sb.grouping, (v) => { sb.grouping = v; }), ' ', b.mid2 || '', ' ',
-          select('cellType', cellsFor(sb.metric), sb.cellType, (v) => { sb.cellType = v; }), b.end || ''),
-        Q && chartBlock(Q),
-        Q && h('div', { class: 'stack' }, heading(4, lab.statsHeading), statsTable(Q)),
+          select('metric', metricsWithData, sb.metric, (v) => { sb.metric = v; }, b.lead), ' ', b.mid1 || '', ' ',
+          select('grouping', list(data.groupings), sb.grouping, (v) => { sb.grouping = v; }, b.mid1), ' ', b.mid2 || '', ' ',
+          select('cellType', cellsFor(sb.metric), sb.cellType, (v) => { sb.cellType = v; }, b.mid2), b.end || ''),
+        Q && chartBlock(Q, { table: false }),
+        Q && h('details', { class: 'drawer' }, h('summary', { text: lab.statsHeading || '' }), statsTable(Q)),
         Q && isText(lab.snapshotLabel) && h('div', { class: 'actions' },
-          h('button', { type: 'button', class: 'btn', 'data-k': 'snapshot', onclick: async () => { try { saveBlob(await composeCard(Q, true), fileStem(Q) + '-snapshot.png'); } catch (e) { /* the picture could not be made on this device */ } state.snapshotMade = true; repaint('snapshot'); } }, lab.snapshotLabel)),
+          h('button', { type: 'button', class: 'btn', 'data-k': 'snapshot', onclick: async () => { try { saveBlob(await composeCard(Q, true), fileStem(Q) + '-snapshot.png'); } catch (e) { /* the picture could not be made on this device */ } state.snapshotMade = true; state.didWork = true; if (hooks.further) hooks.further(); paint('snapshot'); } }, lab.snapshotLabel)),
         state.snapshotMade && h('div', { class: 'bridge', role: 'status' }, para(lab.snapshotDone, 'small'),
-          data.prize && isText(lab.snapshotBridge) && h('a', { href: '#prize' }, fillNodes(lab.snapshotBridge), arrow('→'))));
+          data.prize && isText(lab.snapshotBridge) && h('a', { href: '#prize' }, fillNodes(lab.snapshotBridge), arrow('→')))];
     }
-
-    if (hasGuided) paintGuided(null);
-    paintSolo(null);
-    return { guided: hasGuided ? G.sec : null, solo: S.sec };
+    paint(null);
+    return sectionEl(def, 'explore', [head(n, def, ex.heading || lab.heading, ex.intro), box]);
   }
 
-  /* The journey: hero, then stage 1 (poll), stage 2 (guided simulations), stage 3 (solo explore), then the prize card.
-     Later stages are added to the page only when the student asks for them, so there is no endless scroll. */
-  let homeView = null;
-  let labs = null;
-  let prizeBand = null;
-  function mountStages() {
-    if (!homeView) return;
-    if (!labs && state.stage >= 2) labs = labStages();
-    if (!labs) return;
-    if (state.stage >= 2 && labs.guided && !labs.guided.isConnected) homeView.append(labs.guided);
-    if (state.stage >= 3 && !labs.solo.isConnected) homeView.append(labs.solo);
-    if (state.stage >= 2) { if (!prizeBand) prizeBand = prizeCallout(); if (prizeBand) homeView.append(prizeBand); }
+  /* 006 · take it further: the prize, then two quiet doors */
+  function secFurther(def, n) {
+    const f = data.further;
+    const prize = f.prize || {};
+    const body = h('p', {});
+    const refresh = () => body.replaceChildren(...fillNodes(state.didWork && isText(prize.bodyAfterWork) ? prize.bodyAfterWork : prize.body));
+    hooks.further = refresh;
+    refresh();
+    const doors = list(f.doors).filter((d) => d && data[d.page] && TABS.includes(d.page));
+    return sectionEl(def, 'further', [
+      badge(n, def.name), h('h2', { class: 'sech' }, fillNodes(f.heading)),
+      data.prize && h('div', { class: 'prizewash' }, h('aside', { class: 'prizecard' },
+        isText(prize.badge) && h('p', { class: 'badge', text: fill(prize.badge) }),
+        heading(3, prize.heading), body,
+        isText(prize.cta) && h('a', { class: 'btn', href: '#prize' }, prize.cta, arrow('→')))),
+      doors.length > 0 && h('div', { class: 'doors' }, doors.map((d) => h('a', { class: 'card door', href: '#' + d.page }, h('b', { text: (data.nav || {})[d.page] || d.page }), isText(d.line) && h('span', { text: d.line }))))]);
   }
-  function goStage(n) {
-    if (n === 1) { scrollToId('poll'); return; }
-    if (n === 2 && !list(data.caseStudies).length) n = 3;
-    state.stage = Math.max(state.stage, n);
-    mountStages();
-    if (!labs) return;
-    requestAnimationFrame(() => scrollToId(n === 2 ? 'guided' : 'solo'));
-  }
+
   function renderHome() {
-    labs = null; prizeBand = null;
-    if (!data.poll) state.stage = Math.max(state.stage, 2);
-    homeView = h('div', { class: 'view home' }, heroBlock(), pollBlock());
-    mountStages();
-    return homeView;
+    hooks = {};
+    homeSecs = homeSections();
+    const build = { question: secQuestion, poll: secPoll, pivot: secPivot, lab: secLab, explore: secExplore, further: secFurther };
+    const view = h('div', { class: 'view home' }, homeSecs.map((d, i) => build[d.id](d, i + 1)));
+    return view;
   }
 
-  /* ---------- view 2: the essay prize ---------- */
+  /* ---------- the essay prize, UCAS and teachers pages: numbered sections in one narrow column ---------- */
 
   const countWords = (t) => (String(t).trim().match(/\S+/g) || []).length;
+  function pageSections(navKey) {
+    let k = 0;
+    const name = (data.nav || {})[navKey] || navKey;
+    return { add: (cls, ...kids) => { k += 1; return h('section', { class: 'psec rv' + (cls ? ' ' + cls : '') }, badge(k, name), kids.flat(Infinity).filter(Boolean)); } };
+  }
+  const pageHead = (title, intro) => h('header', { class: 'psec' }, h('h1', { tabindex: '-1' }, fillNodes(title)), para(intro, 'lead'));
 
   function renderPrize() {
     const p = data.prize;
     const cfg = data.config || {};
     const draft = store.get('essay') || {};
     const sections = list(p.sections);
-    const total = h('p', { class: 'total', role: 'status' });
+    const { add } = pageSections('prize');
     const areas = [];
     let timer = 0;
+    const totalText = h('span', { class: 'tt' });
+    const fillBar = h('span', { class: 'fill' });
+    const scale = (p.wordsMax || 500) * 1.2;
+    const bar = h('div', { class: 'totalbar', role: 'status' }, h('div', {}, totalText, h('div', { class: 'track2' }, h('span', { class: 'range', style: `left:${(p.wordsMin / scale) * 100}%;width:${((p.wordsMax - p.wordsMin) / scale) * 100}%` }), fillBar)));
     const refresh = () => {
       let sum = 0;
-      areas.forEach(({ sec, area, counter }) => { const c = countWords(area.value); sum += c; counter.textContent = fill(p.wordCount, { count: c, target: sec.target }); });
-      total.textContent = fill(p.totalCount, { count: sum });
-      total.classList.toggle('inrange', sum >= p.wordsMin && sum <= p.wordsMax);
+      areas.forEach(({ sec, area, counter }) => {
+        const c = countWords(area.value); sum += c;
+        counter.textContent = fill(p.wordCount, { count: c, target: sec.target });
+        counter.classList.toggle('near', c >= 0.85 * (sec.target || 0) && c <= 1.15 * (sec.target || 0));
+      });
+      totalText.textContent = fill(p.totalCount, { count: sum });
+      fillBar.style.width = Math.min(100, (sum / scale) * 100) + '%';
     };
     const save = () => { clearTimeout(timer); timer = setTimeout(() => { const out = {}; areas.forEach(({ sec, area }) => { out[sec.id] = area.value; }); store.set('essay', out); }, 400); };
-    const builder = sections.map((sec, i) => {
+    const hasDeadline = isText(cfg.essayDeadline) && cfg.essayDeadline !== 'PLACEHOLDER';
+    const submitSec = isText(p.submitLabel) && add('', heading(2, p.submitHeading), h('div', { class: 'card' }, h('div', { class: 'actions' }, formButton(cfg.essayFormUrl, p.submitLabel, p.submitPending, 'essay-pending')), paras(p.submitPrivacy, 'small soft')));
+    const introSec = sections.length > 0 && add('', heading(2, p.builderHeading), para(p.builderIntro), para(p.originalityNote, 'small soft'));
+    const boxes = sections.map((sec, i) => {
       const area = h('textarea', { id: 'essay-' + sec.id, rows: String(Math.max(4, Math.round((sec.target || 100) / 22))), 'aria-describedby': `essay-${sec.id}-hint essay-${sec.id}-count`, oninput: () => { refresh(); save(); } });
       area.value = draft[sec.id] || '';
-      const counter = h('p', { class: 'small count', id: `essay-${sec.id}-count` });
+      const counter = h('p', { class: 'count', id: `essay-${sec.id}-count` });
       areas.push({ sec, area, counter });
-      const field = h('div', { class: 'field' },
-        h('label', { for: 'essay-' + sec.id }, h('span', { class: 'qn', 'aria-hidden': 'true', text: String(i + 1) }), sec.label || sec.id),
-        h('p', { class: 'small', id: `essay-${sec.id}-hint`, text: sec.prompt || '' }), area, counter);
-      if (i === sections.length - 1 && list(p.checklist).length) {
-        return h('div', { class: 'withaside' }, field, h('aside', { class: 'card mini' }, heading(4, p.checklistHeading), h('ul', { class: 'ticks' }, list(p.checklist).map((c) => h('li', { text: c })))));
-      }
-      return field;
+      const card = h('div', { class: 'card field' },
+        h('label', { for: 'essay-' + sec.id, text: sec.label || sec.id }),
+        h('p', { class: 'small soft', id: `essay-${sec.id}-hint`, text: sec.prompt || '' }), area, counter);
+      const last = i === sections.length - 1 && list(p.checklist).length;
+      return add('', last ? h('div', { class: 'withaside' }, card, h('aside', { class: 'card' }, heading(4, p.checklistHeading), h('ul', { class: 'ticks' }, list(p.checklist).map((c) => h('li', { text: c }))))) : card);
     });
     const text = () => areas.map(({ sec, area }) => `${sec.label || sec.id}\n${area.value.trim()}`).join('\n\n');
-    const copy = isText(p.copyLabel) && h('button', { type: 'button', class: 'btn', onclick: (ev) => {
+    const copy = isText(p.copyLabel) && qlink(p.copyLabel, (ev) => {
       const btn = ev.currentTarget;
       const fallback = () => { const a = areas.find((x) => x.area.value) || areas[0]; if (a) { a.area.focus(); a.area.select(); } btn.textContent = ui('copySelected'); };
       try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text()).then(() => { btn.textContent = ui('copied'); }, fallback); else fallback(); } catch (e) { fallback(); }
-    } }, p.copyLabel);
-    const clear = isText(p.clearLabel) && h('button', { type: 'button', class: 'linkbtn', text: p.clearLabel, onclick: () => { areas.forEach(({ area }) => { area.value = ''; }); store.del('essay'); refresh(); } });
+    });
+    const clear = isText(p.clearLabel) && qlink(p.clearLabel, () => { areas.forEach(({ area }) => { area.value = ''; }); store.del('essay'); refresh(); });
     refresh();
     const levels = list(p.rubricLevels);
-    const hasDeadline = isText(cfg.essayDeadline) && cfg.essayDeadline !== 'PLACEHOLDER';
-    return h('div', { class: 'view narrow' },
-      h('header', { class: 'pagehead' }, h('h1', { tabindex: '-1' }, fillNodes(p.heading)), para(p.intro, 'lede')),
-      isText(p.submitLabel) && h('section', { class: 'prizecard flat stack' }, heading(2, p.submitHeading),
-        h('div', { class: 'actions' }, formButton(cfg.essayFormUrl, p.submitLabel, p.submitPending, 'essay-pending')), paras(p.submitPrivacy, 'small')),
-      sections.length > 0 && h('section', { class: 'stack' }, heading(2, p.builderHeading), para(p.builderIntro), para(p.originalityNote, 'small'),
-        h('div', { class: 'card essay stack' }, builder, total, h('div', { class: 'actions' }, copy, clear))),
-      list(p.rubric).length > 0 && levels.length > 0 && h('section', { class: 'stack' }, heading(2, p.rubricHeading), para(p.rubricNote, 'small'),
-        h('div', { class: 'tablewrap' }, h('table', { class: 'rubric' },
+    const builderWrap = h('div', { class: 'builderwrap', style: 'display:contents' }, boxes, h('div', { class: 'qlinks' }, copy, clear));
+    const view = h('div', { class: 'pagecol' },
+      pageHead(p.heading, p.intro),
+      submitSec,
+      introSec,
+      builderWrap,
+      list(p.rubric).length > 0 && levels.length > 0 && add('', heading(2, p.rubricHeading), para(p.rubricNote, 'small soft'),
+        h('div', { class: 'card' }, h('div', { class: 'tablewrap' }, h('table', { class: 'rubric' },
           h('thead', {}, h('tr', {}, h('th', { scope: 'col', text: p.rubricCriterionLabel || '' }), levels.map((l) => h('th', { scope: 'col', text: l })))),
-          h('tbody', {}, list(p.rubric).map((r) => h('tr', {}, h('th', { scope: 'row', text: r.criterion || '' }), levels.map((_, i) => h('td', { text: list(r.levels)[i] || '–' })))))))),
-      list(p.rules).length > 0 && h('section', { class: 'card stack' }, heading(2, p.rulesHeading), h('ul', { class: 'ticks' }, list(p.rules).map((r) => h('li', {}, fillNodes(r)))),
-        hasDeadline && para(p.deadlineLabel, 'small')));
+          h('tbody', {}, list(p.rubric).map((r) => h('tr', {}, h('th', { scope: 'row', text: r.criterion || '' }), levels.map((_, i) => h('td', { text: list(r.levels)[i] || '–' })))))))) ),
+      list(p.rules).length > 0 && add('', heading(2, p.rulesHeading), h('div', { class: 'card rulescard' }, h('ul', { class: 'ticks' }, list(p.rules).map((r) => h('li', {}, fillNodes(r)))), hasDeadline && para(p.deadlineLabel, 'small'))),
+      bar);
+    // the running total is on screen only while the four boxes are
+    if (boxes.length) {
+      const place = () => {
+        const r = boxes.map((b) => b.getBoundingClientRect());
+        bar.classList.toggle('show', Math.min(...r.map((x) => x.top)) < window.innerHeight * 0.9 && Math.max(...r.map((x) => x.bottom)) > 0);
+      };
+      window.addEventListener('scroll', place, { passive: true });
+      window.addEventListener('resize', place);
+      pageCleanup = () => { window.removeEventListener('scroll', place); window.removeEventListener('resize', place); };
+      requestAnimationFrame(place);
+    }
+    return view;
   }
-
-  /* ---------- view 3: UCAS and careers ---------- */
 
   function renderUcas() {
     const u = data.ucas;
-    return h('div', { class: 'view narrow' },
-      h('header', { class: 'pagehead' }, h('h1', { tabindex: '-1', text: u.heading || (data.nav || {}).ucas || '' }), para(u.intro, 'lede')),
-      (isText(u.weak) || isText(u.strong)) && h('section', { class: 'stack' }, heading(2, u.statementHeading), para(u.statementIntro),
+    const { add } = pageSections('ucas');
+    return h('div', { class: 'pagecol' },
+      pageHead(u.heading || (data.nav || {}).ucas, u.intro),
+      (isText(u.weak) || isText(u.strong)) && add('', heading(2, u.statementHeading), para(u.statementIntro),
         h('div', { class: 'versus' },
-          isText(u.weak) && h('figure', { class: 'card weak' }, isText(u.weakLabel) && h('figcaption', { class: 'badge', text: u.weakLabel }), h('blockquote', { text: u.weak })),
-          isText(u.strong) && h('figure', { class: 'card strong' }, isText(u.strongLabel) && h('figcaption', { class: 'badge', text: u.strongLabel }), h('blockquote', { text: u.strong }))),
-        list(u.statementWhy).length > 0 && h('div', { class: 'stack' }, heading(3, u.statementWhyHeading), h('ul', { class: 'ticks' }, list(u.statementWhy).map((x) => h('li', { text: x })))),
-        para(u.statementWarning, 'callout')),
-      list(u.comp).length > 0 && h('section', { class: 'stack' }, heading(2, u.compHeading), paras(u.comp),
+          isText(u.weak) && h('figure', { class: 'weak' }, isText(u.weakLabel) && h('figcaption', { text: u.weakLabel }), h('blockquote', { text: u.weak })),
+          isText(u.strong) && h('figure', { class: 'strong' }, isText(u.strongLabel) && h('figcaption', { text: u.strongLabel }), h('blockquote', { text: u.strong }))),
+        para(u.statementWarning, 'callout'),
+        list(u.statementWhy).length > 0 && h('div', { class: 'left' }, heading(3, u.statementWhyHeading), h('ul', { class: 'ticks' }, list(u.statementWhy).map((x) => h('li', { text: x }))))),
+      list(u.comp).length > 0 && add('', heading(2, u.compHeading), h('div', { class: 'left' }, paras(u.comp)),
         u.compLink && isUrl(u.compLink.url) && h('p', {}, linkOut(u.compLink.url, u.compLink.label || u.compLink.url, 'inline'))),
-      list(u.founder).length > 0 && h('section', { class: 'stack' }, heading(2, u.founderHeading),
-        h('blockquote', { class: 'founder' }, paras(u.founder), isText(u.founderSign) && h('footer', { text: u.founderSign }))));
+      list(u.founder).length > 0 && add('', heading(2, u.founderHeading),
+        h('blockquote', { class: 'founder' }, paras(u.founder), isText(u.founderSign) && h('footer', { class: 'small', text: u.founderSign }))));
   }
-
-  /* ---------- view 4: for teachers ---------- */
 
   function renderTeachers() {
     const t = data.teachers;
     const cfg = data.config || {};
-    return h('div', { class: 'view narrow' },
-      h('header', { class: 'pagehead' }, h('h1', { tabindex: '-1', text: t.heading || (data.nav || {}).teachers || '' }), para(t.intro, 'lede')),
-      list(t.value).length > 0 && h('section', { class: 'stack' }, heading(2, t.valueHeading), h('ul', { class: 'ticks' }, list(t.value).map((x) => h('li', { text: x })))),
-      list(t.curriculum).length > 0 && h('section', { class: 'stack' }, heading(2, t.curriculumHeading),
+    const { add } = pageSections('teachers');
+    return h('div', { class: 'pagecol' },
+      pageHead(t.heading || (data.nav || {}).teachers, t.intro),
+      list(t.value).length > 0 && add('', heading(2, t.valueHeading), h('ul', { class: 'ticks' }, list(t.value).map((x) => h('li', { text: x })))),
+      list(t.curriculum).length > 0 && add('', heading(2, t.curriculumHeading),
         h('ul', { class: 'bento two' }, list(t.curriculum).map((c) => h('li', { class: 'card' },
           h('h3', {}, isUrl(c.url) ? linkOut(c.url, c.spec || c.url, 'inline') : c.spec || ''), h('ul', { class: 'ticks' }, list(c.topics).map((x) => h('li', { text: x }))))))),
-      isText(t.sensitivity) && h('section', { class: 'stack' }, heading(2, t.sensitivityHeading), para(t.sensitivity)),
-      isText(t.packLabel) && h('section', { class: 'card stack' }, heading(2, t.packHeading), para(t.packBody),
+      isText(t.sensitivity) && add('', heading(2, t.sensitivityHeading), para(t.sensitivity)),
+      isText(t.packLabel) && add('', heading(2, t.packHeading), para(t.packBody),
         h('div', { class: 'actions' }, formButton(cfg.teacherFormUrl, t.packLabel, t.packPending, 'pack-pending'),
-          isUrl(cfg.teacherPackUrl) && isText(t.packDownloadLabel) && linkOut(cfg.teacherPackUrl, t.packDownloadLabel, 'btn ghost'))),
-      list(t.code).length > 0 && h('section', { class: 'stack' }, heading(2, t.codeHeading), h('ol', { class: 'steps' }, list(t.code).map((x) => h('li', { text: x })))));
+          isUrl(cfg.teacherPackUrl) && isText(t.packDownloadLabel) && linkOut(cfg.teacherPackUrl, t.packDownloadLabel, 'qlink'))),
+      list(t.code).length > 0 && add('', heading(2, t.codeHeading), h('ol', { class: 'steps left' }, list(t.code).map((x) => h('li', { text: x })))));
   }
 
-  /* ---------- shell: tabs, notice, footer, routing ---------- */
+  /* ---------- shell: top bar, rail and thread, footer, review mode, routing ---------- */
 
-  const TABS = ['home', 'prize', 'ucas', 'teachers'];
-  const availableTabs = () => TABS.filter((id) => id === 'home' || data[id]);
-  // The logo always goes back to the start of the journey.
+  const TABS = ['prize', 'ucas', 'teachers'];
+  const availableTabs = () => TABS.filter((id) => data[id]);
+  const parseHash = () => {
+    const raw = location.hash;
+    return { check: /#check$/.test(raw), key: decodeURIComponent(raw.replace(/#check$/, '').replace(/^#/, '')) };
+  };
+  const hashFor = (id) => '#' + id + (checkMode ? '#check' : '');
+  // Move to a section: the address changes (so the back button works) and the page scrolls there.
+  function go(id) {
+    if (parseHash().key === id) scrollToId(id); else location.hash = hashFor(id);
+  }
   function toStart(ev) {
     ev.preventDefault();
-    if (state.tab === 'home') { window.scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' }); if (location.hash) history.replaceState(null, '', location.pathname + location.search); return; }
-    location.hash = '#home';
+    const first = homeSecs[0] ? homeSecs[0].id : '';
+    if (state.tab === 'home') { window.scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' }); if (first && parseHash().key !== first) history.replaceState(null, '', hashFor(first)); return; }
+    location.hash = hashFor(first || 'question');
   }
 
+  let switchEl = null;
   function renderNav() {
     const nav = $('tabs');
-    nav.setAttribute('aria-label', ui('tabs'));
+    const bar = $('topbar');
+    nav.setAttribute('aria-label', ui('site'));
+    const lab = data.lab || {};
+    switchEl = isText(lab.translatorLabel) ? h('button', { type: 'button', class: 'switch', role: 'switch', 'aria-checked': state.plain ? 'true' : 'false', 'data-k': 'translator', onclick: () => {
+      state.plain = !state.plain;
+      switchEl.setAttribute('aria-checked', String(state.plain));
+      repaintWork();
+    } }, h('span', { class: 'knob', 'aria-hidden': 'true' }), h('span', { text: lab.translatorLabel })) : null;
+    const more = h('button', { type: 'button', class: 'more', 'aria-expanded': 'false', 'aria-controls': 'navlinks', text: ui('more'), onclick: (ev) => { const open = !bar.classList.contains('open'); bar.classList.toggle('open', open); ev.currentTarget.setAttribute('aria-expanded', String(open)); } });
     nav.replaceChildren(
-      h('a', { class: 'brand', href: '#home', onclick: toStart, text: data.meta.title || '' }),
-      h('ul', {}, availableTabs().filter((id) => id !== 'home').map((id) => h('li', {}, h('a', { href: '#' + id, class: id === 'prize' ? 'tab prize' : 'tab', 'aria-current': state.tab === id ? 'page' : null, text: (data.nav || {})[id] || id })))));
+      h('a', { class: 'brand', href: hashFor('question'), onclick: toStart, text: data.meta.title || '' }),
+      h('div', { class: 'navright' },
+        h('ul', { class: 'navlinks', id: 'navlinks' }, availableTabs().map((id) => h('li', {}, h('a', { href: '#' + id, 'aria-current': state.tab === id ? 'page' : null, onclick: () => { bar.classList.remove('open'); more.setAttribute('aria-expanded', 'false'); }, text: (data.nav || {})[id] || id })))),
+        switchEl, more));
   }
-  function renderNotice() {
-    const n = $('notice');
-    if (!data.meta.PLACEHOLDER) { n.hidden = true; return; }
-    n.replaceChildren(h('p', { text: data.meta.placeholderNotice || 'PLACEHOLDER' }));
-    n.hidden = false;
+  // The translator is global: repaint everything that shows a label, each panel in place.
+  function repaintWork() {
+    if (hooks.lab) hooks.lab(null, false);
+    if (hooks.explore) hooks.explore(null);
+    repaintCharts();
   }
+
   function renderCredits() {
     const m = data.meta;
     const f = data.footer || {};
@@ -1091,30 +1070,144 @@
       (source || isText(m.citation)) && line(isText(f.dataLabel) && f.dataLabel + ' ', source && link(source, m.sourceUrl), source && isText(m.citation) && '. ', isText(m.citation) && link(m.citation, m.citationUrl), '.'),
       isText(m.licence) && line(isText(f.licenceLabel) && f.licenceLabel + ' ', link(m.licence, m.licenceUrl), '.'),
       isText(m.accessed) && line(isText(f.accessedLabel) && f.accessedLabel + ' ', fmtDate(m.accessed), '.'),
-      isText(f.privacy) && line(f.privacy)));
+      isText(f.privacy) && line(f.privacy),
+      m.PLACEHOLDER && isText(f.buildNote) && line(f.buildNote)));
   }
 
+  /* Review mode: open any page with #check on the end of the address. Every piece of text that still says PLACEHOLDER is
+     outlined and counted in the corner. Nothing links to it and it needs no code change. */
+  let checkMode = false;
+  let checkObserver = null;
+  function markPlaceholders() {
+    document.querySelectorAll('.ph').forEach((n) => n.classList.remove('ph'));
+    const found = new Set();
+    for (const root of [main, $('credits')]) {
+      const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let t = walk.nextNode(); t; t = walk.nextNode()) if (t.nodeValue.includes('PLACEHOLDER') && t.parentElement) found.add(t.parentElement);
+    }
+    found.forEach((el) => el.classList.add('ph'));
+    const badge = $('phcount');
+    if (badge) badge.textContent = `${found.size} PLACEHOLDER on this page`;
+  }
+  function syncCheck() {
+    const want = parseHash().check;
+    if (want === checkMode && (!want || checkObserver)) return;
+    checkMode = want;
+    const old = $('phcount');
+    if (checkObserver) { checkObserver.disconnect(); checkObserver = null; }
+    document.querySelectorAll('.ph').forEach((n) => n.classList.remove('ph'));
+    if (old) old.remove();
+    if (!checkMode) return;
+    document.body.append(h('div', { id: 'phcount', role: 'status' }));
+    let queued = false;
+    checkObserver = new MutationObserver(() => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; markPlaceholders(); }); });
+    [main, $('credits')].forEach((r) => checkObserver.observe(r, { childList: true, subtree: true, characterData: true }));
+    markPlaceholders();
+  }
+
+  /* The rail and the thread, the section tracker, and the reveal on scroll */
+  let homeIO = null;
+  let trackFrame = 0;
+  // Which home section is on screen: the last one whose top is above 40% of the window.
+  function sectionAtMid() {
+    const mid = window.innerHeight * 0.4;
+    let idx = 0; let frac = 0;
+    homeSecs.forEach((d, i) => { const el = $(d.id); if (!el) return; const r = el.getBoundingClientRect(); if (r.top <= mid) { idx = i; frac = Math.min(1, Math.max(0, (mid - r.top) / (r.height || 1))); } });
+    return { idx, frac };
+  }
+  function trackScroll() {
+    if (trackFrame) return;
+    trackFrame = requestAnimationFrame(() => {
+      trackFrame = 0;
+      document.body.classList.toggle('scrolled', window.scrollY > 24);
+      if (state.tab !== 'home' || !homeSecs.length) return;
+      const { idx, frac } = sectionAtMid();
+      const p = homeSecs.length > 1 ? Math.min(1, (idx + frac) / (homeSecs.length - 1)) : 1;
+      $('rail').style.setProperty('--p', p);
+      $('thread-top').style.setProperty('--p', p);
+      const cur = homeSecs[idx];
+      if (cur.id !== state.cur) {
+        state.cur = cur.id;
+        document.querySelectorAll('.rdot').forEach((a) => { if (a.dataset.id === cur.id) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); });
+        document.body.classList.toggle('on-dark', !!cur.dark);
+        if (parseHash().key !== cur.id) history.replaceState(null, '', hashFor(cur.id));
+      }
+    });
+  }
+  function setupHome() {
+    teardownHome();
+    document.documentElement.classList.toggle('snap', !reducedMotion.matches);
+    $('rail').replaceChildren(h('ol', {}, homeSecs.map((d, i) => h('li', {}, h('a', { class: 'rdot', href: hashFor(d.id), 'data-id': d.id, 'aria-label': `${pad3(i + 1)} ${d.name}`, onclick: (ev) => { ev.preventDefault(); go(d.id); } }, String(i + 1), h('span', { class: 'rname', 'aria-hidden': 'true', text: `${pad3(i + 1)} · ${d.name}` }))))));
+    state.cur = null;
+    if (reducedMotion.matches || !('IntersectionObserver' in window)) { trackScroll(); return; }
+    document.querySelectorAll('.sec > .wrap > *').forEach((el) => el.classList.add('rv'));
+    homeIO = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      e.target.classList.add('in');
+      if (e.target.dataset.beat && api.beats) api.beats(Number(e.target.dataset.beat));
+      homeIO.unobserve(e.target);
+    }), { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('.rv').forEach((el) => homeIO.observe(el));
+    trackScroll();
+  }
+  function teardownHome() {
+    if (homeIO) { homeIO.disconnect(); homeIO = null; }
+    document.documentElement.classList.remove('snap');
+    $('rail').replaceChildren();
+    document.body.classList.remove('on-dark');
+  }
+  function setupPage() {
+    teardownHome();
+    if ('IntersectionObserver' in window && !reducedMotion.matches) {
+      homeIO = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); homeIO.unobserve(e.target); } }), { threshold: 0.1 });
+      document.querySelectorAll('.rv').forEach((el) => homeIO.observe(el));
+    }
+  }
+  document.addEventListener('keydown', (ev) => {
+    if (ev.altKey || ev.ctrlKey || ev.metaKey || state.tab !== 'home') return;
+    const t = ev.target;
+    if (t && t.closest && t.closest('input, textarea, select, [contenteditable]')) return;
+    const here = homeSecs[sectionAtMid().idx];
+    const own = here && api[here.id];
+    if (own && own.key(ev)) ev.preventDefault();
+  });
+  window.addEventListener('scroll', trackScroll, { passive: true });
+  window.addEventListener('resize', trackScroll);
+
+  let pageCleanup = null;
   function show() {
-    const key = decodeURIComponent(location.hash.replace(/^#/, ''));
-    const section = { poll: 1, lab: 2, guided: 2, solo: 3 }[key] || null;
-    const tab = availableTabs().includes(key) ? key : 'home';
     const first = state.tab === '';
+    const { key } = parseHash();
+    syncCheck();
+    const sectionIds = homeSecs.length ? homeSecs.map((s) => s.id) : KNOWN;
+    const isSection = sectionIds.includes(key);
+    const tab = availableTabs().includes(key) ? key : 'home';
     const changed = tab !== state.tab;
     state.tab = tab;
-    main.dataset.tab = tab;
-    if (changed) main.replaceChildren(tab === 'prize' ? renderPrize() : tab === 'ucas' ? renderUcas() : tab === 'teachers' ? renderTeachers() : renderHome());
+    document.body.dataset.tab = tab;
+    if (changed) {
+      if (pageCleanup) { pageCleanup(); pageCleanup = null; }
+      main.replaceChildren(tab === 'prize' ? renderPrize() : tab === 'ucas' ? renderUcas() : tab === 'teachers' ? renderTeachers() : renderHome());
+      if (tab === 'home') setupHome(); else setupPage();
+    }
     renderNav();
     document.title = [tab === 'home' ? '' : (data.nav || {})[tab], data.meta.title].filter(isText).join(' — ');
-    if (section && tab === 'home') { requestAnimationFrame(() => goStage(section)); return; }
-    if (first) return;
-    if (!changed && tab === 'home') return;
+    if (tab === 'home') {
+      if (isSection && $(key)) { requestAnimationFrame(() => { if (first) $(key).scrollIntoView({ block: 'start' }); else scrollToId(key); }); return; }
+      // A device that already holds a finished poll opens at the pivot instead of making the student do it twice.
+      if (first && state.poll.submitted && $('pivot')) { requestAnimationFrame(() => $('pivot').scrollIntoView({ block: 'start' })); return; }
+      if (first) return;
+      if (!changed) { window.scrollTo(0, 0); return; }
+    }
     window.scrollTo(0, 0);
     const h1 = main.querySelector('h1');
     if (h1) h1.focus({ preventScroll: true });
+    document.body.classList.toggle('scrolled', false);
+    trackScroll();
   }
 
   function fail(message) {
-    main.replaceChildren(h('div', { class: 'view narrow' }, h('h1', { text: UI.loadFailTitle }), h('p', { class: 'lede', text: message }), h('p', { text: UI.loadFailHelp })));
+    main.replaceChildren(h('div', { class: 'pagecol' }, h('h1', { text: UI.loadFailTitle }), h('p', { class: 'lead', text: message }), h('p', { text: UI.loadFailHelp })));
   }
 
   async function start() {
@@ -1124,15 +1217,14 @@
       data = await res.json();
       if (!data || typeof data !== 'object') throw new Error(DATA_URL);
       data.meta = data.meta || {};
-      Object.keys(COPY).forEach((k) => { if (data[k]) data[k] = merge(data[k], COPY[k]); });
     } catch (err) {
       data = null;
       fail(err && err.message ? err.message : DATA_URL);
       return;
     }
     const saved = store.get('poll');
-    if (saved && saved.answers && isNum(saved.score)) { state.poll.submitted = saved; state.poll.classCode = saved.classCode || ''; }
-    renderNotice();
+    if (saved && saved.answers && isNum(saved.score)) { state.poll.submitted = saved; state.poll.classCode = saved.classCode || ''; state.poll.answers = Object.assign({}, saved.answers); state.poll.phase = 'result'; }
+    homeSecs = homeSections();
     renderCredits();
     show();
     window.addEventListener('hashchange', show);

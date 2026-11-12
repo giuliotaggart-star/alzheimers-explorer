@@ -13,7 +13,7 @@
 
 - **`donors`:** one record per donor with an anonymous `id` and the fields the site splits by: `adnc`, `braak`, `cognitive`, `age`, `sex`, `apoe4`. Use the official SEA-AD donor metadata. No names or dates.
 - **`series`:** one entry per metric and cell type, `{metric, cellType, values}`, with one value per donor in the same order as `donors` (use `null` where a donor has no value). Abundance = that cell type's share of the donor's cells. Gene activity = donor-level pseudobulk for that gene in that cell type; record the unit in `metrics[].unit`.
-- **`map.points`:** about 3,000 cells sampled from the real map, `{"<cell type id>": [[x, y], …]}`.
+- **`map.points` (retired in v4):** the sorting map was removed from the site, because the rings in section 003 do its job better. If it comes back, this is the format: about 3,000 cells sampled from the real map, `{"<cell type id>": [[x, y], …]}`.
 - Ids in `cellTypes`, `metrics`, `groupings` and `confounders` must match what `series`, `caseStudies` and `lab.launchpads` refer to. The checker tells you when they do not.
 
 ## Before publishing

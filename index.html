@@ -3,19 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AlzExplore</title>
-<meta name="description" content="Explore real brain-cell data from people with Alzheimer’s and think like a scientist.">
+<title>Unravel</title>
+<meta name="description" content="Unravel: real human brain-cell data, one donor at a time.">
 <meta name="color-scheme" content="light">
+<link rel="preload" href="assets/fonts/instrument-serif-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="assets/fonts/fredoka-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
 <a class="skip" href="#main">Skip to the content</a>
-<header class="topbar">
-  <nav id="tabs" aria-label="Sections"></nav>
+<header class="topbar" id="topbar">
+  <nav id="tabs" aria-label="Site"></nav>
 </header>
-<div id="notice" class="notice" role="note" hidden></div>
+<nav id="rail" aria-label="Sections"></nav>
+<div id="thread-top" aria-hidden="true"></div>
 <main id="main" tabindex="-1">
   <p class="loading">Loading the data…</p>
 </main>

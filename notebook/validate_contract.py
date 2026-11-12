@@ -1,4 +1,4 @@
-"""Check a data file against the contract AlzExplore expects.
+"""Check a data file against the contract Unravel expects.
 
 Usage:  python3 notebook/validate_contract.py data/seaad-mtg.json
 Exits 0 when the file is safe to load, 1 otherwise. Warnings do not fail the check.
@@ -13,6 +13,8 @@ TOKENS = {
     "nDonors", "trend", "prediction", "donorId", "value", "age", "sex", "n",
     "answered", "total", "score", "benchmarkMean", "count", "target",
 }
+SECTION_IDS = {"question", "poll", "pivot", "lab", "explore", "further"}
+PAGES = {"prize", "ucas", "teachers"}
 TOKEN = re.compile(r"\{\{\s*([A-Za-z0-9]+)\s*\}\}")
 
 
@@ -72,8 +74,8 @@ def check(doc):
     n = len(donors)
     if not n:
         errors.append("donors is empty: the Data Lab is hidden")
-    ids = [d.get("id") for d in donors]
-    if len(set(ids)) != len(ids):
+    donor_ids = [d.get("id") for d in donors]
+    if len(set(donor_ids)) != len(donor_ids):
         errors.append("donor ids are not unique")
     for d in donors:
         for bad in ("name", "dob", "dateOfBirth", "postcode"):
@@ -142,9 +144,39 @@ def check(doc):
     for i, pad in enumerate((doc.get("lab") or {}).get("launchpads") or []):
         check_question(f"lab.launchpads[{i}]", pad)
 
-    for cid in ((doc.get("map") or {}).get("points") or {}):
-        if cid not in cells:
-            warnings.append(f"map.points.{cid}: not a cell type id, drawn in grey")
+    # home-page sections: ids must be known and unique; removing one removes it from the page
+    seen = set()
+    for i, sec in enumerate(doc.get("sections") or []):
+        sid = sec.get("id") if isinstance(sec, dict) else None
+        if sid not in SECTION_IDS:
+            errors.append(f"sections[{i}]: unknown id {sid!r}; the code knows {sorted(SECTION_IDS)}")
+        elif sid in seen:
+            errors.append(f"sections[{i}]: id {sid!r} appears twice")
+        seen.add(sid)
+        if not is_text((sec or {}).get("name")):
+            errors.append(f"sections[{i}]: needs a name")
+
+    # the language split: a plain-English label may simplify a term but never swap Alzheimer's for dementia
+    for kind in ("groupings", "cellTypes", "metrics", "confounders"):
+        for x in doc.get(kind) or []:
+            plain, lab = str(x.get("plainLabel") or ""), str(x.get("label") or "")
+            if "dementia" in plain.lower() and "dementia" not in lab.lower():
+                errors.append(f"{kind}.{x.get('id')}: plainLabel says 'dementia' but label does not ({plain!r})")
+    for i, t in enumerate(doc.get("terms") or []):
+        if "dementia" in str(t.get("plain") or "").lower() and "dementia" not in str(t.get("research") or "").lower():
+            errors.append(f"terms[{i}]: plain says 'dementia' but the research term does not")
+    for i, cs in enumerate(doc.get("caseStudies") or []):
+        plain, lab = str(cs.get("plainTitle") or ""), str(cs.get("title") or "")
+        if "dementia" in plain.lower() and "dementia" not in lab.lower():
+            errors.append(f"caseStudies[{i}]: plainTitle says 'dementia' but title does not")
+
+    ids = [i.get("id") for i in (doc.get("poll") or {}).get("items") or []]
+    pivot_id = (doc.get("poll") or {}).get("pivotItemId")
+    if pivot_id is not None and pivot_id not in ids:
+        errors.append(f"poll.pivotItemId {pivot_id!r} is not one of the poll statement ids {ids}")
+    for i, door in enumerate((doc.get("further") or {}).get("doors") or []):
+        if door.get("page") not in PAGES or not doc.get(door.get("page")):
+            errors.append(f"further.doors[{i}].page {door.get('page')!r} is not a page that exists ({sorted(PAGES)})")
 
     poll = doc.get("poll") or {}
     for i, item in enumerate(poll.get("items") or []):
