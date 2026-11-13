@@ -204,7 +204,9 @@
 
   /* ---------- the chart: one dot per donor, never a bar ---------- */
 
-  const css = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  // Tokens never change at run time, so each is read from the stylesheet once.
+  const tokenCache = new Map();
+  const css = (name, fallback) => { if (!tokenCache.has(name)) tokenCache.set(name, getComputedStyle(document.documentElement).getPropertyValue(name).trim()); return tokenCache.get(name) || fallback; };
   const rgbOf = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
   function mix(a, b, t) {
     const [A, B] = [rgbOf(a), rgbOf(b)];
@@ -283,7 +285,8 @@
         if (lane.n > 0) svg.append(s('line', { x1: cx - half - 6, x2: cx + half + 6, y1: Y(lane.median), y2: Y(lane.median), stroke: cream, 'stroke-width': 3, 'stroke-linecap': 'round' }));
       });
       svg.append(monoText({ x: x0 + band / 2, y: H - m.b + 22, 'text-anchor': 'middle', fill: cream }, g.name));
-      svg.append(monoText({ x: x0 + band / 2, y: H - m.b + 40, 'text-anchor': 'middle' }, fill(lab.nLabel, { n: g.n }) || String(g.n)));
+      // the donor count per group, where there is room for it (it is always in the table under For the curious)
+      if (band >= 56) svg.append(monoText({ x: x0 + band / 2, y: H - m.b + 40, 'text-anchor': 'middle' }, fill(lab.nLabel, { n: g.n }) || String(g.n)));
     });
     const by = H - 10;
     if (ends.length === 2) {
@@ -461,6 +464,7 @@
   const repaintCharts = () => charts.forEach((c) => { if (c.holder.isConnected) c.paint(); else charts.delete(c); });
   // Repaint a panel in place: pin its height and the scroll position so the page never jumps.
   function keepScroll(box, fn) {
+    if (!box.isConnected) { fn(); return; }
     const y = window.scrollY;
     box.style.minHeight = box.offsetHeight + 'px';
     fn();
@@ -1219,7 +1223,7 @@
     }
     found.forEach((el) => el.classList.add('ph'));
     const box = $('phcount');
-    if (box) box.replaceChildren(h('span', { text: fill(ui('checkCount'), { count: found.size }) }), [...checkIssues].map((x) => h('span', { class: 'issue', text: x })));
+    if (box) box.replaceChildren(h('span', { text: fill(ui('checkCount'), { count: found.size }) }), ...[...checkIssues].map((x) => h('span', { class: 'issue', text: x })));
   }
   function syncCheck() {
     const want = parseHash().check;
