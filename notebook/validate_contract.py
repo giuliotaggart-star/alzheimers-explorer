@@ -2,6 +2,9 @@
 
 Usage:  python3 notebook/validate_contract.py data/seaad-mtg.json
 Exits 0 when the file is safe to load, 1 otherwise. Warnings do not fail the check.
+
+The v5 writing rules are reported under "writing:" for Giulio to fix by hand. They never fail the check, because the
+fix is a rewording, and the science is not reworded by the code or by Claude.
 """
 import json
 import re
@@ -11,9 +14,10 @@ TOKENS = {
     "prizeValue", "wordsMin", "wordsMax", "donorTotal", "cellsTotal", "deadline",
     "metricLabel", "cellLabel", "groupingLabel", "unit", "firstGroup", "lastGroup", "medianFirst", "medianLast",
     "nDonors", "trend", "prediction", "donorId", "value", "age", "sex", "n",
-    "answered", "total", "score", "benchmarkMean", "count", "target",
+    "answered", "total", "score", "benchmarkMean", "count", "target", "src",
 }
-SECTION_IDS = {"question", "poll", "pivot", "lab", "explore", "further"}
+SECTION_IDS = {"question", "video", "poll", "pivot", "lab", "explore", "further"}
+TINTS = {"coral", "cream", "peri", "rose"}
 PAGES = {"prize", "ucas", "teachers"}
 TOKEN = re.compile(r"\{\{\s*([A-Za-z0-9]+)\s*\}\}")
 
@@ -155,6 +159,8 @@ def check(doc):
         seen.add(sid)
         if not is_text((sec or {}).get("name")):
             errors.append(f"sections[{i}]: needs a name")
+        if (sec or {}).get("tint") is not None and sec.get("tint") not in TINTS:
+            errors.append(f"sections[{i}]: tint must be one of {sorted(TINTS)}")
 
     # the language split: a plain-English label may simplify a term but never swap Alzheimer's for dementia
     for kind in ("groupings", "cellTypes", "metrics", "confounders"):
@@ -206,6 +212,10 @@ def check(doc):
     if is_text(config.get("pollEndpoint")) and config["pollEndpoint"].startswith("https://"):
         warnings.append("config.pollEndpoint is set: poll answers and class codes now leave the device. Check the privacy wording.")
 
+    check_video(doc, errors, warnings)
+    check_explain(doc, errors, warnings)
+    check_glossary(doc, errors, warnings)
+
     placeholders = 0
     for path, text in strings(doc):
         if "PLACEHOLDER" in text and path != "meta.placeholderNotice":
@@ -218,9 +228,163 @@ def check(doc):
     return errors, warnings
 
 
+def check_video(doc, errors, warnings):
+    v = doc.get("video")
+    if not v:
+        return
+    for key in ("src", "heading", "transcript"):
+        if not is_text(v.get(key)):
+            errors.append(f"video.{key} is missing")
+    if is_text(v.get("src")) and not v["src"].startswith("assets/video/"):
+        errors.append("video.src must be a file in assets/video/ (no outside addresses)")
+    for key in ("play", "pause", "soundOn", "soundOff", "again"):
+        if not is_text((v.get("labels") or {}).get(key)):
+            errors.append(f"video.labels.{key} is missing")
+    caps = v.get("captions") or []
+    if not caps:
+        errors.append("video.captions is empty")
+    last_to = None
+    for i, cap in enumerate(caps):
+        at = f"video.captions[{i}]"
+        f, t = cap.get("from"), cap.get("to")
+        if not (is_num(f) and is_num(t)):
+            errors.append(f"{at}: from and to must be numbers of seconds")
+            continue
+        if not f < t:
+            errors.append(f"{at}: from ({f}) must be less than to ({t})")
+        if last_to is not None and f < last_to:
+            errors.append(f"{at}: overlaps the caption before it (starts at {f}, the one before ends at {last_to})")
+        last_to = t
+        if not is_text(cap.get("text")):
+            errors.append(f"{at}: needs text")
+        for name in TOKEN.findall(cap.get("text") or ""):
+            if name not in ("donorTotal", "cellsTotal"):
+                errors.append(f"{at}: token {{{{{name}}}}} is not one a caption can use (donorTotal, cellsTotal)")
+
+
+def check_explain(doc, errors, warnings):
+    """Every chart carries three lines: what you are looking at, what it shows, why it matters."""
+    targets = [(f"caseStudies[{i}]", cs) for i, cs in enumerate(doc.get("caseStudies") or [])]
+    if doc.get("explore") is not None:
+        targets.append(("explore", doc["explore"]))
+    for where, owner in targets:
+        ex = owner.get("explain")
+        if not isinstance(ex, dict):
+            errors.append(f"{where}.explain is missing: every chart needs look, shows and matters")
+            continue
+        for key in ("look", "shows", "matters"):
+            val = ex.get(key)
+            if not is_text(val):
+                errors.append(f"{where}.explain.{key} is empty")
+            elif "PLACEHOLDER" in val:
+                warnings.append(f"{where}.explain.{key} is still PLACEHOLDER (write it from the real results)")
+    labels = (doc.get("lab") or {}).get("explainLabels") or {}
+    for key in ("look", "shows", "matters"):
+        if not is_text(labels.get(key)):
+            errors.append(f"lab.explainLabels.{key} is missing")
+
+
+def check_glossary(doc, errors, warnings):
+    gl = doc.get("glossary")
+    if gl is None:
+        warnings.append("glossary is missing: add {term, plain} for every science word")
+        return
+    for i, g in enumerate(gl):
+        if not (is_text(g.get("term")) and is_text(g.get("plain"))):
+            errors.append(f"glossary[{i}]: needs term and plain")
+
+
+# ---------- writing rules (v5): reported, never fixed by the code ----------
+
+SKIP_ROOTS = ("donors", "series", "config", "meta", "sections", "glossary", "groupings", "confounders", "cellTypes", "metrics", "nav", "ui", "footer")
+SKIP_KEYS = {"id", "src", "poster", "colour", "url", "key", "metric", "cellType", "grouping", "page", "type", "correct", "benchmarkSourceUrl", "pivotItemId", "value"}
+READING_ORDER = ("hero", "video", "poll", "pivot", "lab", "caseStudies", "explore", "further", "prize", "ucas", "teachers", "footer")
+SENTENCE = re.compile(r"(?<=[.?!])\s+(?=[A-Z“\"(])")
+HEADING_KEY = re.compile(r"(heading|Heading|title|Title|cta|Cta|Label|label|Labels|hint)$")
+
+
+def words(text):
+    return len(re.findall(r"[A-Za-z0-9£%’'‘\-–]+", TOKEN.sub("N", text)))
+
+
+def prose(doc):
+    """User-facing sentences, in reading order."""
+    for root in READING_ORDER:
+        if root not in doc:
+            continue
+        for path, text in strings(doc[root], root):
+            leaf = re.sub(r"\[\d+\]$", "", path).rsplit(".", 1)[-1]
+            if leaf in SKIP_KEYS or text.startswith("http"):
+                continue
+            yield path, text
+
+
+def writing(doc):
+    out = []
+    flat = list(prose(doc))
+    for path, text in flat:
+        clean = text.replace("PLACEHOLDER:", "").replace("PLACEHOLDER", "").strip()
+        for sentence in SENTENCE.split(clean):
+            n = words(sentence)
+            if n > 20:
+                out.append(f"{path}: a sentence of {n} words (limit 20): “{sentence[:90]}{'…' if len(sentence) > 90 else ''}”")
+        if "!" in text:
+            out.append(f"{path}: has an exclamation mark")
+        if re.search(r"[\U0001F300-\U0001FAFF\u2600-\u27BF]", text):
+            out.append(f"{path}: has an emoji")
+
+    # gene names stay out of headings and buttons
+    genes = [m.get("id") for m in doc.get("metrics") or [] if m.get("id") and m.get("id") != "abundance" and m["id"].isupper()]
+    for path, text in flat:
+        leaf = re.sub(r"\[\d+\]$", "", path).rsplit(".", 1)[-1]
+        if HEADING_KEY.search(leaf) or leaf in ("question",) and path.startswith("hero"):
+            for g in genes:
+                if re.search(rf"\b{re.escape(g)}\b", text):
+                    out.append(f"{path}: gene name {g} in a heading or button")
+
+    # no section shows more than 45 words of body text at once (chart explanations not counted)
+    def longest(items):
+        return max((words(x) for x in items if is_text(x)), default=0)
+    lab, pv, poll, ex, fur = (doc.get(k) or {} for k in ("lab", "pivot", "poll", "explore", "further"))
+    cases = doc.get("caseStudies") or []
+    budgets = {
+        "title screen": words((doc.get("hero") or {}).get("tagline") or ""),
+        "the data film (transcript)": words((doc.get("video") or {}).get("transcript") or ""),
+        "poll": words(poll.get("framing") or "") + longest(i.get("statement") for i in poll.get("items") or []),
+        "pivot": sum(words(x) for x in (pv.get("body") or []) + [pv.get("handoff") or ""]) + sum(words((d or {}).get("body") or "") + words((d or {}).get("title") or "") for d in pv.get("decoders") or []),
+        "lab (step 1)": words(lab.get("intro") or "") + longest(c.get("brief") for c in cases) + longest((c.get("predict") or {}).get("question") for c in cases),
+        "explore": words(ex.get("intro") or "") + sum(words(p.get("blurb") or "") for p in lab.get("launchpads") or []),
+        "take it further": words(((fur.get("prize") or {}).get("body")) or "") + words(((fur.get("prize") or {}).get("heading")) or "") + sum(words(d.get("line") or "") for d in fur.get("doors") or []),
+    }
+    for name, n in budgets.items():
+        if n > 45:
+            out.append(f"section '{name}': {n} words of body text on screen at once (limit 45)")
+
+    # a science word is explained the first time it appears: in brackets or after a dash, in the same sentence
+    for g in doc.get("glossary") or []:
+        term = g.get("term") or ""
+        if not is_text(term) or "PLACEHOLDER" in term:
+            continue
+        pat = re.compile(rf"(?<![A-Za-z]){re.escape(term)}(?![A-Za-z])", 0 if term.isupper() or term[:1].isupper() and len(term) < 5 else re.I)
+        for path, text in flat:
+            m = pat.search(text)
+            if not m:
+                continue
+            sentence = next((x for x in SENTENCE.split(text) if pat.search(x)), text)
+            after = text[m.end():m.end() + 3]
+            explained = after.startswith((" (", " —", " –", " - ")) or "(" + term in text or (g.get("plain") or "").lower() in sentence.lower()
+            if not explained:
+                out.append(f"{path}: first use of “{term}” is not explained in the same sentence (glossary: {g.get('plain')})")
+            break
+    return out
+
+
 if __name__ == "__main__":
     path = sys.argv[1] if len(sys.argv) > 1 else "data/seaad-mtg.json"
-    errors, warnings = check(json.load(open(path, encoding="utf-8")))
+    doc = json.load(open(path, encoding="utf-8"))
+    errors, warnings = check(doc)
+    for w in writing(doc):
+        print("writing:", w)
     for w in warnings:
         print("warning:", w)
     for e in errors:

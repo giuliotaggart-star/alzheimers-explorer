@@ -6,34 +6,51 @@ A free site for UK A-level Biology students. It starts from a question about dem
 
 ## The journey
 
-The home page is six full-height sections, each with one job and one way on. Their order, names and numbers come from `sections` in the data file; remove one and the rest renumber themselves, and its rail dot and deep link go too.
+The home page is one continuous, dark page: a title screen, a 30-second data film, then the v4 journey. Each full-height section has one heading, one visual and one coral button. Their order, names, glow colours and numbers come from `sections` in the data file; remove one and the rest renumber themselves, and its rail dot and deep link go too.
 
 | # | Address | Job |
 |---|---|---|
-| 001 | `#question` | The human question about dementia, one line on what to do, one button |
-| 002 | `#poll` | The six statements one at a time, no feedback until the end, then the result in the same card |
-| 003 | `#pivot` | The dark screen: the poll's hinge statement, dementia vs Alzheimer's disease, three nested rings, then into the lab |
-| 004 | `#lab` | A carousel of the five simulations, then the four steps of one (predict, observe, stress-test, takeaway) |
-| 005 | `#explore` | Three launchpads and the "Show me how … changes across … in …" sentence; save a snapshot card |
-| 006 | `#further` | The prize card, then two quiet doors (UCAS and careers, For teachers) |
+| 001 | `#question` | The title screen: UNRAVEL, one sentence (`hero.tagline`), one button, one glow |
+| 002 | `#video` | Where the data comes from: the film, with captions laid over it from `video.captions` |
+| 003 | `#poll` | `hero.question` as the heading, then the six statements one at a time, then the score |
+| 004 | `#pivot` | The poll's hinge statement, dementia vs Alzheimer's disease, three nested rings |
+| 005 | `#lab` | The guided flow: pick a simulation (four tiles and More), then predict, observe, stress-test, takeaway |
+| 006 | `#explore` | Working solo: launchpads, the "Show me how … changes across … in …" sentence, cell-type orbs, a snapshot card |
+| 007 | `#further` | The prize, then the three side pages as tiles |
 
-The other pages: `#prize` (submit link, four-box claim–evidence–reasoning builder with a running word-count bar, rubric, rules), `#ucas`, `#teachers`.
+The other pages: `#prize`, `#ucas`, `#teachers`.
 
-**Language split.** The name, hero, poll and 003 say *dementia*. From 003 on, *Alzheimer's* is the disease in the data. The only place the lab says *dementia* is the cognitive-status labels. The A-level translator may simplify a term but never swap the disease; the checker enforces it.
+**Language split.** The name, hero, poll and pivot say *dementia*. From the pivot on, *Alzheimer's* is the disease in the data. The only place the lab says *dementia* is the cognitive-status labels. The checker enforces it.
 
-Every chart is one dot per donor, with an optional median and interquartile box, a zero-based axis, and a colour that runs from `--ink-2` to `--deep` across the groups. The accent colour (Burning Flame) is used only for the prize card and its bridge, the "you" tick in the poll result, and the thread down the left edge.
+**Look (Build Spec v5).** Dark only. Eight colour tokens in `assets/app.css` (`--bg`, `--card`, `--cream`, `--muted`, `--coral`, `--peri`, `--rose`, `--line`), plus `--lilac` and `--sand` for the fifth and sixth cell types. Colour arrives as glow that fades into black, never as a flat block or a border. Three faces, all self-hosted: Bagel Fat One (title, section titles, big numbers), Plus Jakarta Sans (body), DM Mono (labels). Seven components: stat card, orb, panel, chip, pill button, tile row, dotted ring.
+
+Every chart is one dot per donor (periwinkle circles for less pathology, coral triangles for more), with the median and interquartile box and a zero-based axis. Directly under each chart are three lines from the data file: what you are looking at, what it shows, why it matters (`explain.look`, `explain.shows`, `explain.matters`). Its effect size (Cohen's d, first group against last) sits beside it in a stat card. Method notes and p-values live only in the closed "For the curious" drawer, which is the only fold on the site.
 
 ## Everything is in one file
 
 Every sentence, number, unit, colour and address is read from `data/seaad-mtg.json`. To finish or change the site you edit that file; you do not touch the code. Leave a field out and its part of the page disappears; leave a whole section out (`prize`, say) and its link disappears.
 
-Sentences can quote live values with tokens such as `{{medianFirst}}`. A mistyped token shows on the page, highlighted. Every number needs a unit: if one is missing the page prints `[unit missing]`.
+Sentences can quote live values with tokens such as `{{medianFirst}}`. `{{donorTotal}}` and `{{cellsTotal}}` give the bare number, so the sentence names what is counted ("{{donorTotal}} people…"). A mistyped token shows on the page, highlighted. Every number needs a unit: if one is missing the page prints `[unit missing]`.
 
 After every edit:
 
 ```
 python3 notebook/validate_contract.py data/seaad-mtg.json
 ```
+
+The checker also runs the v5 writing rules: sentences of 20 words or fewer, at most 45 words of body text on screen per section, gene names out of headings and buttons, science words explained at first use (from `glossary`), no exclamation marks or emoji. It prints failures as `writing:` lines for a person to fix; they never fail the run, because the fix is a rewording.
+
+### The data film
+
+Save the film as `assets/video/data-journey.mp4`, then run `tools/prepare-video.sh`. It makes the poster from the last frame and re-encodes the file if it is over 6 MB. The film has no words in it. The captions are HTML, timed by `video.captions[].from` and `.to` (seconds). If the film's scene changes do not land on the six-second marks, change those numbers. While the file is missing, the section shows its heading, the transcript and the button, and `#check` reports it. The film is never precached by the service worker; only its poster is.
+
+### Browser checks
+
+```
+node tests/acceptance.js
+```
+
+Runs the 18 v5 acceptance checks except Lighthouse at 390, 820 and 1440 px (needs Playwright with Chromium; ffmpeg for the film checks, which use a generated test clip). It prints a contrast table at the end.
 
 ### The data the lab needs
 
@@ -44,14 +61,22 @@ python3 notebook/validate_contract.py data/seaad-mtg.json
 | `confounders[]` | What step 3 can stratify by: `key`, `label`, optional `bins` for numbers such as age |
 | `cellTypes[]`, `metrics[]` | Labels, A-level labels, colours; each metric has a `unit` and `decimals` |
 | `series[]` | The numbers: `{metric, cellType, values}` where `values` lines up one to one with `donors` |
-| `caseStudies[]` | The five simulations: which series, which grouping, the prediction question, the takeaway passage |
+| `caseStudies[]` | The five simulations: which series, which grouping, the prediction question, the takeaway passage, `explain` (three lines) and `curious` (p-value, method notes) |
+| `glossary[]` | `{term, plain}` for every science word a Year 12 student would not know |
+| `video` | The film: `src`, `poster`, `heading`, `captions`, `transcript`, button `labels` |
 
 ## What is left to fill in
 
 - [ ] Run the real analysis and replace `donors` and `series` (see `notebook/README.md`)
 - [ ] `metrics[].unit` for gene activity (still "PLACEHOLDER units")
 - [ ] `poll.items[].benchmark`: check each percentage against the results table in Hassan et al. (2026); then tidy `poll.benchmarkSource`
-- [ ] `hero.question` and `hero.description`; `pivot.body` (your two sentences); `pivot.handoff`; `poll.resultGap`; `sections[].name`; `further.doors[].line`; `further.prize.bodyAfterWork`
+- [ ] v5: download the film to `assets/video/data-journey.mp4`, run `tools/prepare-video.sh`, check caption timings
+- [ ] v5: `meta.cellsTotal`: the cell count for the MTG from the paper (Allen pages give 1.4 million and 3.4 million)
+- [ ] v5: `hero.tagline` (or approve the default); `hero.hint` (time someone doing the journey: "8 MINUTES" is a guess)
+- [ ] v5: `explain.look/shows/matters` for each case study and `explore.explain.matters`, from the real results; `curious.pValue` and notes
+- [ ] v5: `video.transcript` (four plain sentences); fill `glossary`; fix the `writing:` lines the checker prints
+- [ ] v5: look at the title on a phone. If Bagel Fat One feels too childish, switch to Lilita One (the only change is the font file and the first `@font-face` in `assets/app.css`)
+- [ ] `hero.question`; `pivot.body` (your two sentences); `pivot.handoff`; `poll.resultGap`; `sections[].name`; `further.doors[].line`; `further.prize.bodyAfterWork`
 - [ ] `pivot.decoders[1]`: one expert sentence on selective vulnerability
 - [ ] Launchpad blurbs
 - [ ] `caseStudies[]`: each brief, each takeaway passage, model claim and limitation. These state findings, so they wait for real data
@@ -94,10 +119,13 @@ No build step. The service worker is network-first: with a connection, students 
 index.html                     the page shell
 assets/app.css                 styles
 assets/app.js                  all behaviour; no dependencies; no subject content
-assets/fonts/                  Instrument Serif and Plus Jakarta Sans (SIL Open Font License); no outside fonts
+assets/fonts/                  Bagel Fat One, Plus Jakarta Sans, DM Mono (SIL Open Font License); no outside fonts
+assets/video/                  the data film and its poster (add them; see above)
 data/seaad-mtg.json            everything the site says and shows
 notebook/                      outline of the analysis, and the data checker
 sw.js                          offline support
+tests/acceptance.js            browser checks for Build Spec v5
+tools/prepare-video.sh         poster and web encode for the film
 ```
 
 `app.js` is one file with one function per view and per block, each taking the data and returning DOM. That keeps it runnable with no build and makes a later move to React a function-by-function port.

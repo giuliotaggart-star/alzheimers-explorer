@@ -29,7 +29,25 @@
   "contact": "PLACEHOLDER",
   "essayDeadline": "PLACEHOLDER"
  },
- "ui": {},
+ "ui": {
+  "site": "Site",
+  "sections": "Sections",
+  "menu": "Menu",
+  "close": "Close",
+  "more": "More",
+  "newTab": "(opens in a new tab)",
+  "unitMissing": "[unit missing]",
+  "you": "you",
+  "step": "Step",
+  "nextCase": "Next simulation",
+  "tried": "tried",
+  "copied": "Copied",
+  "copySelected": "Selected — copy it with your device",
+  "checkCount": "{{count}} PLACEHOLDER on this page",
+  "checkVideoMissing": "Video file missing: {{src}}",
+  "skip": "Skip to the content",
+  "progress": "How far down the page you are"
+ },
  "nav": {
   "prize": "£50 essay prize",
   "ucas": "UCAS & careers",
@@ -37,11 +55,53 @@
  },
  "hero": {
   "question": "PLACEHOLDER: what is really going on inside a brain with dementia?",
-  "description": "PLACEHOLDER: Answer six quick questions, then explore real brain data one donor at a time. About 45 minutes.",
-  "cta": "Start with the question"
+  "tagline": "{{donorTotal}} people gave their brains to science. See what their cells can tell us about Alzheimer’s.",
+  "cta": "Start",
+  "hint": "8 MINUTES · NO SIGN-UP"
+ },
+ "video": {
+  "src": "assets/video/data-journey.mp4",
+  "poster": "assets/video/data-journey.jpg",
+  "heading": "Where does the data come from?",
+  "captions": [
+   {
+    "from": 0.8,
+    "to": 5.6,
+    "text": "{{donorTotal}} people donated their brains"
+   },
+   {
+    "from": 6.6,
+    "to": 11.6,
+    "text": "Scientists studied one small region"
+   },
+   {
+    "from": 12.6,
+    "to": 17.6,
+    "text": "They looked at one cell at a time"
+   },
+   {
+    "from": 18.6,
+    "to": 23.6,
+    "text": "And counted the messages inside it"
+   },
+   {
+    "from": 25.0,
+    "to": 30.0,
+    "text": "{{cellsTotal}} cells, sorted by type"
+   }
+  ],
+  "transcript": "PLACEHOLDER: Giulio writes four plain sentences describing the film.",
+  "captionsHeading": "What the film says",
+  "labels": {
+   "play": "Play",
+   "pause": "Pause",
+   "soundOn": "Sound on",
+   "soundOff": "Sound off",
+   "again": "Watch again"
+  },
+  "cta": "Next"
  },
  "poll": {
-  "heading": "What do you think?",
   "framing": "Six statements about dementia. Go with your gut. No feedback until you finish.",
   "options": {
    "true": "True",
@@ -116,11 +176,11 @@
   "benchmarkSourceUrl": "https://researchportal.plymouth.ac.uk/en/publications/dementia-knowledge-levels-among-adolescents-in-england/",
   "classCodeLabel": "Class code (optional)",
   "classCodeHint": "Your teacher may give you a code, like BIOL-12. Working alone? Leave it blank.",
-  "progressLabel": "{{answered}} of {{total}} answered",
   "submitLabel": "Submit poll",
+  "scoreLabel": "Your score",
+  "scoreOf": "out of {{total}}",
   "privacyLocal": "Your answers stay on this device.",
   "privacyShared": "Your six answers and class code go to the workshop organiser. No name. No email.",
-  "resultHeading": "You got {{score}} of {{total}}",
   "resultCompare": "The average teenager in the study got {{benchmarkMean}} right.",
   "yourAnswer": "Your answer",
   "correctAnswer": "Correct answer",
@@ -133,19 +193,15 @@
   "resultGap": "PLACEHOLDER: {{count}} of these six statements fooled most teenagers.",
   "backLabel": "Back",
   "ofLabel": "Statement {{n}} of {{total}}",
-  "resultCta": "Keep going"
+  "resultCta": "Keep going",
+  "nextLabel": "Next"
  },
  "lab": {
   "heading": "Pick a case to run",
   "intro": "Five guided simulations. Each one asks you to predict, look, test and conclude.",
-  "translatorLabel": "A-level translator",
-  "translatorOff": "Research terms",
-  "translatorOn": "A-level terms",
-  "overlayLabel": "Median and spread",
   "dotNote": "1 dot = 1 donor. The thick line is the median. The box shows the middle half of donors (the IQR).",
   "donorTitle": "Donor {{donorId}}: {{value}}. Age {{age}}, {{sex}}.",
   "exportLabel": "Save this chart",
-  "tableLabel": "The numbers as a table",
   "tableColumns": {
    "group": "Group",
    "n": "Donors",
@@ -158,7 +214,6 @@
    "down": "lower",
    "same": "about the same"
   },
-  "cheatHeading": "Skills cheat-sheet",
   "cheats": [
    {
     "title": "Correlation is not causation",
@@ -239,41 +294,56 @@
     "grouping": "cognitive"
    }
   ],
-  "cardFigures": {
-   "donors": "Donors",
-   "groups": "Groups",
-   "measure": "Measure",
-   "groupsUnit": "groups"
-  },
-  "openLabel": "Start this simulation",
-  "allLabel": "All simulations",
   "stepOfLabel": "Step {{n}} of {{total}}",
-  "toExplore": "Try your own question"
+  "toExplore": "Try your own question",
+  "explainLabels": {
+   "look": "What you’re looking at",
+   "shows": "What it shows",
+   "matters": "Why it matters"
+  },
+  "curiousLabel": "For the curious",
+  "effectLabel": "Size of the difference (Cohen’s d)",
+  "effectUnit": "SD",
+  "effectNote": "The gap between {{firstGroup}} and {{lastGroup}}, measured in standard deviations (the typical spread between donors).",
+  "effectWords": {
+   "small": "A small difference",
+   "moderate": "A moderate difference",
+   "large": "A large difference",
+   "none": "Almost no difference"
+  },
+  "pValueLabel": "Adjusted p-value",
+  "moreLabel": "More",
+  "chooseLabel": "Pick a simulation",
+  "modelHeading": "A model answer"
  },
- "terms": [
+ "glossary": [
   {
-   "research": "ADNC",
+   "term": "ADNC",
    "plain": "Alzheimer’s pathology level"
   },
   {
-   "research": "Braak stage",
+   "term": "Braak stage",
    "plain": "Tau tangle spread"
   },
   {
-   "research": "Microglia-PVM",
+   "term": "Microglia-PVM",
    "plain": "Brain immune cells"
   },
   {
-   "research": "Sst",
+   "term": "Sst",
    "plain": "GABA inhibitory neurons"
   },
   {
-   "research": "Oligodendrocyte",
+   "term": "Oligodendrocyte",
    "plain": "Myelin-producing cells"
   },
   {
-   "research": "Expression (snRNA-seq)",
+   "term": "Expression (snRNA-seq)",
    "plain": "Gene activity level"
+  },
+  {
+   "term": "PLACEHOLDER",
+   "plain": "PLACEHOLDER: Giulio adds every science word a Year 12 student would not know."
   }
  ],
  "donors": [
@@ -1045,6 +1115,10 @@
     "Low",
     "Intermediate",
     "High"
+   ],
+   "ends": [
+    "Less damage",
+    "More damage"
    ]
   },
   {
@@ -1060,6 +1134,10 @@
     "IV",
     "V",
     "VI"
+   ],
+   "ends": [
+    "Less damage",
+    "More damage"
    ]
   },
   {
@@ -1104,37 +1182,37 @@
    "id": "sst",
    "label": "Sst",
    "plainLabel": "GABA inhibitory neurons",
-   "colour": "#b8479f"
+   "colour": "#FBE9CF"
   },
   {
    "id": "microglia-pvm",
    "label": "Microglia-PVM",
    "plainLabel": "Brain immune cells",
-   "colour": "#b3741a"
+   "colour": "#F28B74"
   },
   {
    "id": "oligodendrocyte",
    "label": "Oligodendrocyte",
    "plainLabel": "Myelin-producing cells",
-   "colour": "#4f7cc4"
+   "colour": "#8F92E6"
   },
   {
    "id": "astrocyte",
    "label": "Astrocyte",
    "plainLabel": "Support cells (astrocytes)",
-   "colour": "#0e8a8a"
+   "colour": "#E9A3A0"
   },
   {
    "id": "l2-3-it",
    "label": "L2/3 IT",
    "plainLabel": "Upper-layer excitatory neurons",
-   "colour": "#c8553d"
+   "colour": "#C9C2F2"
   },
   {
    "id": "l5-it",
    "label": "L5 IT",
    "plainLabel": "Deep-layer excitatory neurons",
-   "colour": "#3f9142"
+   "colour": "#D9B98C"
   }
  ],
  "metrics": [
@@ -2342,6 +2420,17 @@
     ],
     "claim": "PLACEHOLDER model claim: one sentence a student could defend from this chart.",
     "limitation": "PLACEHOLDER model limitation: one sentence on what this data cannot show."
+   },
+   "explain": {
+    "look": "PLACEHOLDER",
+    "shows": "PLACEHOLDER",
+    "matters": "PLACEHOLDER"
+   },
+   "curious": {
+    "pValue": "PLACEHOLDER",
+    "notes": [
+     "PLACEHOLDER: one line on the method behind this result, from the notebook."
+    ]
    }
   },
   {
@@ -2426,6 +2515,17 @@
     ],
     "claim": "PLACEHOLDER model claim: one sentence a student could defend from this chart.",
     "limitation": "PLACEHOLDER model limitation: one sentence on what this data cannot show."
+   },
+   "explain": {
+    "look": "PLACEHOLDER",
+    "shows": "PLACEHOLDER",
+    "matters": "PLACEHOLDER"
+   },
+   "curious": {
+    "pValue": "PLACEHOLDER",
+    "notes": [
+     "PLACEHOLDER: one line on the method behind this result, from the notebook."
+    ]
    }
   },
   {
@@ -2510,6 +2610,17 @@
     ],
     "claim": "PLACEHOLDER model claim: one sentence a student could defend from this chart.",
     "limitation": "PLACEHOLDER model limitation: one sentence on what this data cannot show."
+   },
+   "explain": {
+    "look": "PLACEHOLDER",
+    "shows": "PLACEHOLDER",
+    "matters": "PLACEHOLDER"
+   },
+   "curious": {
+    "pValue": "PLACEHOLDER",
+    "notes": [
+     "PLACEHOLDER: one line on the method behind this result, from the notebook."
+    ]
    }
   },
   {
@@ -2594,6 +2705,17 @@
     ],
     "claim": "PLACEHOLDER model claim: one sentence a student could defend from this chart.",
     "limitation": "PLACEHOLDER model limitation: one sentence on what this data cannot show."
+   },
+   "explain": {
+    "look": "PLACEHOLDER",
+    "shows": "PLACEHOLDER",
+    "matters": "PLACEHOLDER"
+   },
+   "curious": {
+    "pValue": "PLACEHOLDER",
+    "notes": [
+     "PLACEHOLDER: one line on the method behind this result, from the notebook."
+    ]
    }
   },
   {
@@ -2685,6 +2807,17 @@
     ],
     "claim": "PLACEHOLDER model claim: one sentence a student could defend from this chart.",
     "limitation": "PLACEHOLDER model limitation: one sentence on what this data cannot show."
+   },
+   "explain": {
+    "look": "PLACEHOLDER",
+    "shows": "PLACEHOLDER",
+    "matters": "PLACEHOLDER"
+   },
+   "curious": {
+    "pValue": "PLACEHOLDER",
+    "notes": [
+     "PLACEHOLDER: one line on the method behind this result, from the notebook."
+    ]
    }
   }
  ],
@@ -2875,28 +3008,52 @@
  "sections": [
   {
    "id": "question",
-   "name": "The question"
+   "name": "The question",
+   "tint": "coral",
+   "glowX": 50,
+   "glowY": 100
+  },
+  {
+   "id": "video",
+   "name": "The data",
+   "tint": "cream",
+   "glowX": 80,
+   "glowY": 0
   },
   {
    "id": "poll",
-   "name": "What you think"
+   "name": "What you think",
+   "tint": "peri",
+   "glowX": 15,
+   "glowY": 100
   },
   {
    "id": "pivot",
    "name": "The pivot",
-   "dark": true
+   "tint": "rose",
+   "glowX": 85,
+   "glowY": 100
   },
   {
    "id": "lab",
-   "name": "The lab"
+   "name": "The lab",
+   "tint": "coral",
+   "glowX": 20,
+   "glowY": 0
   },
   {
    "id": "explore",
-   "name": "Solo explore"
+   "name": "Solo explore",
+   "tint": "peri",
+   "glowX": 80,
+   "glowY": 100
   },
   {
    "id": "further",
-   "name": "Take it further"
+   "name": "Take it further",
+   "tint": "cream",
+   "glowX": 50,
+   "glowY": 100
   }
  ],
  "pivot": {
@@ -2931,7 +3088,13 @@
  },
  "explore": {
   "heading": "Ask your own question",
-  "intro": "No task, no marks. Pick a launchpad or build your own question."
+  "intro": "No task, no marks. Pick a launchpad or build your own question.",
+  "explain": {
+   "look": "1 dot = 1 donor. The thick line is the median. The box shows the middle half of donors (the IQR).",
+   "shows": "The median is {{trend}} in {{lastGroup}} than in {{firstGroup}}.",
+   "matters": "PLACEHOLDER"
+  },
+  "cellLabel": "Pick a cell type"
  },
  "further": {
   "heading": "Take it further",
@@ -2951,6 +3114,7 @@
     "page": "teachers",
     "line": "A free 50-minute lesson for Year 12 and 13."
    }
-  ]
+  ],
+  "tilesLabel": "Three more pages"
  }
 }
