@@ -5,20 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Unravel</title>
 <meta name="description" content="Unravel: real human brain-cell data, one donor at a time.">
-<meta name="color-scheme" content="light">
-<link rel="preload" href="assets/fonts/instrument-serif-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0E0E10">
+<link rel="preload" href="assets/fonts/bagel-fat-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/app.css">
 </head>
-<body>
-<a class="skip" href="#main">Skip to the content</a>
+<body data-tab="home">
+<a class="skip" href="#main"></a>
+<div id="ambient" aria-hidden="true"></div>
+<div id="progress" aria-hidden="true"><span></span></div>
 <header class="topbar" id="topbar">
-  <nav id="tabs" aria-label="Site"></nav>
+  <nav id="tabs"></nav>
 </header>
-<nav id="rail" aria-label="Sections"></nav>
-<div id="thread-top" aria-hidden="true"></div>
+<nav id="rail"></nav>
 <main id="main" tabindex="-1">
-  <p class="loading">Loading the data…</p>
+  <p class="loading">…</p>
 </main>
 <footer id="credits" class="credits"></footer>
 <noscript><p class="loading">This site needs JavaScript switched on to draw its charts.</p></noscript>
